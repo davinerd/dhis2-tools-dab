@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+source libs.sh
+
+PROG=`basename $0`
+REMOTE=false
+REMOTE_IP=""
+
+function usage() {
+    echo "Usage: $PROG [options] <instance> [<type>]"
+    echo "  instance: name of the container to configure"
+    echo "Options:"
+    echo "  -r                 Configure remote shipping (default false)"
+    echo "  -i <remote_ip>     IP address of the remote host to receive logs (mandatory when -r)"
+    echo "  -h, --help         Display this help message"
+}
+
+while getopts i:hr opt; do
+  case $opt in
+    i) REMOTE_IP="${OPTARG}" ;;
+    r) REMOTE=true ;;
+    h) usage && exit 0;;
+    *) log_error "Error: Unknown parameter '$OPTARG'."
+      exit 1;;
+  esac
+done
+
+shift $(($OPTIND - 1))
+
+if [ "$#" -lt 1 ]; then
+  usage
+  exit 1
+fi
+
+container_name="$1"
+container_type="$2"
+
+if [ ! $(lxc list -c n --format csv | grep -w $container_name) ]; then
+    log_error "Container '$container_name' does not exit."
+    exit 1
+fi
+
+if [[ $container_type == "" ]]; then # this is a DHIS2 instance
+    log_info "Copying log4j2.xml for logging to journal..."
+    lxc file push ./etc/log4j2.xml ${container_name}/opt/dhis2/
+    # Because of https://dhis2.atlassian.net/browse/DHIS2-13163 some DHIS2 version requires both log4j2 configuration.
+    lxc exec $container_name -- sh -c "echo 'JAVA_OPTS=\"\${JAVA_OPTS} -Dlog4j.configuration=/opt/dhis2/log4j2.xml -Dlog4j2.configurationFile=/opt/dhis2/log4j2.xml\"' >> /etc/default/tomcat9"
+    lxc exec $container_name -- service tomcat9 restart
+elif [[ "$container_type" == "nginx_proxy" ]]; then
+    log_info "Configuring nginx to log to journal error logs and HTTP access logs"
+    lxc exec $container_name -- sed -i '/error_log/s/.*/error_log syslog:server=unix:\/dev\/log info;/' /etc/nginx/nginx.conf
+    lxc exec $container_name -- sed -i '/http {/a  access_log   syslog:server=unix:\/dev\/log;' /etc/nginx/nginx.conf
+    lxc exec $container_name -- service nginx reload
+elif [[ "$container_type" == "apache_proxy" ]] || [[ "$container_type" == "munin_monitor" ]]; then
+    log_info "Configuring Apache to log to journal error logs and HTTP access logs"
+    lxc exec $container_name -- sed -i '/ErrorLog/s/.*/ErrorLog syslog/' /etc/apache2/sites-enabled/000-default.conf
+    lxc exec $container_name -- sed -i '/CustomLog/s/.*/CustomLog \"| \/usr\/bin\/logger -t apache2 -p user.info\" combined/' /etc/apache2/sites-enabled/000-default.conf
+    lxc exec $container_name -- service apache2 reload
+elif [[ "$container_type" == "postgres" ]]; then
+    log_info "Configuring postgres to log to journal"
+    lxc exec $container_name -- sh -c "echo \"log_destination = 'syslog'\" >> /etc/postgresql/13/main/postgresql.conf"
+    lxc exec $container_name -- service postgresql reload
+else
+    log_error "Container type '$container_type' not valid."
+    exit 1
+fi
+
+# each container can have munin installed and needs to be configured
+if [ "$(lxc exec $container_name -- dpkg -l | grep munin-node)" ]; then
+    log_info "Configuring munin node to log to journal"
+    lxc exec $container_name -- sed -i '/log_file/s/.*/log_file Sys::Syslog/' /etc/munin/munin-node.conf
+    lxc exec $container_name -- service munin-node restart
+fi
+
+if [[ $REMOTE = true ]]; then
+    if [[ $REMOTE_IP ]]; then
+        journal_remote_installed=$(lxc exec $container_name -- dpkg -l | grep -w systemd-journal-remote)
+        if [ "$journal_remote_installed" ]; then
+            lxc exec $container_name -- service systemd-journal-upload restart # restart to force resync
+            log_warn "$container_name has already journal-remote installed. Skipped"
+        else
+            log_info "Configuring remote logs to $REMOTE_IP"
+            lxc exec $container_name -- apt-get install -y systemd-journal-remote
+            lxc exec $container_name -- sh -c "echo URL=http://${REMOTE_IP}:19532 >> /etc/systemd/journal-upload.conf"
+            lxc exec $container_name -- adduser --system --home /run/systemd --no-create-home --disabled-login --group systemd-journal-upload
+            # lxc exec $container_name -- chown systemd-journal-upload /var/lib/private/systemd/
+            lxc exec $container_name -- sed -i -e 's/DynamicUser\=yes/DynamicUser\=no/' /lib/systemd/system/systemd-journal-upload.service
+            lxc exec $container_name -- systemctl daemon-reload
+            lxc exec $container_name -- systemctl enable --now systemd-journal-upload.service
+        fi
+    else
+        log_error "To enable remote logs you need to specify the IP with -i"
+        usage
+        exit 1
+    fi
+fi

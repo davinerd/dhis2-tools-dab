@@ -1,0 +1,95 @@
+# DHIS2 WAF rules to allow public access to dashboard items
+#
+
+# SECTION 1
+# define jq filters which can be applied to response
+#
+# This jq filter will strip off top level user attributes
+# Need to verify whether it is necessary
+ExtFilterDefine stripjson mode=output \
+    cmd="/usr/bin/jq 'del(.user,.users,.likedBy,.lastUpdatedBy,.interpretations)'"
+
+# Reduce output to just id field
+ExtFilterDefine idonly mode=output \
+    cmd="/usr/bin/jq '{ id: .id }'"
+
+# Reduce output to just version field
+ExtFilterDefine versiononly mode=output \
+    cmd="/usr/bin/jq '{ version: .version }'"
+
+# SECTION 2 
+# API requests
+#
+<Location /covid19/api>
+
+  # SECTION 2.1
+  # Blacklisting rules [These are ORed together]
+  # Limit request method
+  RewriteCond %{REQUEST_METHOD} !(GET|OPTIONS) [NC,OR]
+  # Limit resources
+  RewriteCond %{REQUEST_URI} ^/covid19/api/([0-9]+/)?(user[^S]|trackedEntityInstance|metadata|dashboards/q) [OR]  
+  # Forbid data model traversal of user or tei fields
+  RewriteCond %{QUERY_STRING} (user|trackedEntityInstance|lastUpdatedBy|createdBy)[^,]*([[(]|%5B|%28)
+  # Return not authorized
+  RewriteRule ^(.*)$ - [F,L]
+
+  # SECTION 2.2
+  # Whitelisting URL rules [These are ANDed together]
+  RewriteCond %{REQUEST_URI} !^/covid19/api/([0-9]+/)?analytics
+  RewriteCond %{REQUEST_URI} !^/covid19/api/([0-9]+/)?apps
+  RewriteCond %{REQUEST_URI} !^/covid19/api/([0-9]+/)?attributes
+  RewriteCond %{REQUEST_URI} !^/covid19/api/([0-9]+/)?charts
+  RewriteCond %{REQUEST_URI} !^/covid19/api/([0-9]+/)?dashboardItems
+  RewriteCond %{REQUEST_URI} !^/covid19/api/([0-9]+/)?dashboards
+  RewriteCond %{REQUEST_URI} !^/covid19/api/([0-9]+/)?reportTables
+  RewriteCond %{REQUEST_URI} !^/covid19/api/([0-9]+/)?dimensions
+  RewriteCond %{REQUEST_URI} !^/covid19/api/([0-9]+/)?geoFeatures
+  RewriteCond %{REQUEST_URI} !^/covid19/api/([0-9]+/)?legendSets
+  RewriteCond %{REQUEST_URI} !^/covid19/api/([0-9]+/)?legends
+  RewriteCond %{REQUEST_URI} !^/covid19/api/([0-9]+/)?maps
+  RewriteCond %{REQUEST_URI} !^/covid19/api/([0-9]+/)?resources
+  RewriteCond %{REQUEST_URI} !^/covid19/api/([0-9]+/)?schemas
+  RewriteCond %{REQUEST_URI} !^/covid19/api/([0-9]+/)?me
+  RewriteCond %{REQUEST_URI} !^/covid19/api/([0-9]+/)?system/info
+  RewriteCond %{REQUEST_URI} !^/covid19/api/([0-9]+/)?userSettings
+  RewriteCond %{REQUEST_URI} !^/covid19/api/([0-9]+/)?externalMapLayers
+  RewriteCond %{REQUEST_URI} !^/covid19/api/([0-9]+/)?organisationUnitLevels
+  RewriteCond %{REQUEST_URI} !^/covid19/api/([0-9]+/)?programStages
+  RewriteCond %{REQUEST_URI} !^/covid19/api/([0-9]+/)?optionSets
+  RewriteCond %{REQUEST_URI} !^/covid19/api/([0-9]+/)?options  
+  # Return not authorized
+  RewriteRule ^(.*)$ - [F,L]
+
+  # Authorize and send to proxy
+  RequestHeader set Authorization "Basic YWRtaW46ZGlzdHJpY3Q="
+  SetOutputFilter stripjson
+
+  ProxyPass "http://192.168.0.10:8080/covid19/api"
+  ProxyPassReverse "http://192.168.0.10:8080/covid19/api"
+
+</Location>
+
+# SECTION 3 
+# Special rule for /api/me
+# Filter output to only show id
+<LocationMatch ^/covid19/api/([0-9]+/)?me >
+  SetOutputFilter idonly
+  ProxyPass "http://192.168.0.10:8080"
+  ProxyPassReverse "http://192.168.0.10:8080"
+</LocationMatch>
+
+# SECTION 4 
+# Special rule for /system/info
+# Filter output to only show id
+<LocationMatch ^/covid19/api/([0-9]+/)?system/info >
+  SetOutputFilter versiononly
+  ProxyPass "http://192.168.0.10:8080"
+  ProxyPassReverse "http://192.168.0.10:8080"
+</LocationMatch>
+
+# SECTION 5 
+# Allow all access to static resources
+<LocationMatch /covid19/dhis-web- >
+  Require all granted
+</LocationMatch>
+

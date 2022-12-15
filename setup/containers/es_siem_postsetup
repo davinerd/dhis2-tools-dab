@@ -1,0 +1,28 @@
+ES_USER_PWD="$(lxc exec $NAME -- cat .es_elastic_passwd)"
+lxc exec $NAME -- rm -rf .es_elastic_passwd
+
+creds_str='{"service":"elasticsearch","username":"elastic","password":"'${ES_USER_PWD}'"}'
+save_creds $creds_str
+
+running_containers=$(lxc list -c n,s -f csv | grep -i running | cut -d ',' -f1)
+
+for container in $running_containers; do
+  containerz=$(echo $CONTAINERS | jq -r --arg cname "$container" '. | select(.name == $cname)')
+
+  if [[ "$containerz" ]]; then
+    container_name=$(echo $containerz | jq -r .name)
+    container_type=$(echo $containerz | jq -r .type)
+  else
+    container_name="$container"
+    container_type=""
+  fi
+
+  # Skip configuration for logger and SIEM
+  if ! [[ "$container_type" =~ "siem" ]] && ! [[ "$container_type" =~ "logger" ]] || ! [ "$container_type" ]; then
+    log_info "Configuring journal for '$container_name'"
+    dhis2-set-journal $container_name $container_type
+
+    log_info "Configuring filebeat for '$container_name'"
+    dhis2-set-elasticsearch -i "$IP" $container_name
+  fi
+done

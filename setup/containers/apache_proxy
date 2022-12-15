@@ -1,0 +1,11 @@
+apt-get -y update
+apt-get -y upgrade
+
+apt-get -y install certbot
+apt-get -y install apache2
+apt-get -y install libwww-perl
+a2enmod ssl cache rewrite proxy_http headers
+
+ufw allow 80/tcp
+ufw allow 443/tcp
+yes | ufw enable

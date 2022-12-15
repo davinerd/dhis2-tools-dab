@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+source libs.sh
+
+PROG=`basename $0`
+FILEBEAT_VERSION="8.4.1"
+TMP_FILEBEAT="/tmp/filebeat.deb"
+arch=$(uname -m)
+if [[ "$arch" == "aarch64" ]]; then
+   arch="arm64"
+fi
+
+function usage() {
+    echo "Usage: $PROG [-h] -i <elasticsearch ip> <instance>"
+    echo "  instance: name of the container to configure"
+    echo "Options:"
+    echo "  -i <elasticsearch ip>     IP address of Elasticsearch (mandatory)"
+    echo "  -h, --help                Display this help message"
+}
+
+while getopts i:h opt; do
+  case $opt in
+    i) ES_IP="${OPTARG}" ;;
+    h) usage && exit 0;;
+    *) log_error "Error: Unknown parameter '$OPTARG'."
+      exit 1;;
+  esac
+done
+
+shift $(($OPTIND - 1))
+
+if [ "$#" -lt 1 ] || [ -z "$ES_IP" ]; then
+  usage
+  exit 1
+fi
+
+container_name=$1
+# convert IP to regex
+IPREGEX=$(echo $ES_IP | sed "s/\./\\\./g")
+ES_CREDS=$(get_creds elasticsearch)
+ES_USER_PWD=$(echo $ES_CREDS | jq -r .password)
+
+if ! [ "$(lxc exec $container_name -- dpkg -l | grep filebeat)" ]; then
+    log_info "Retrieving filebeat $FILEBEAT_VERSION ($arch)"
+
+    if ! [ -f "${TMP_FILEBEAT}" ]; then
+        curl -s -L -o $ -O https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-$FILEBEAT_VERSION-$arch.deb || log_error "Cannot download filebeat. Quitting" && exit 1
+    fi
+
+    log_info "Installing filebeat"
+    lxc file push $TMP_FILEBEAT ${container_name}/${TMP_FILEBEAT}
+    lxc exec $container_name -- dpkg -i $TMP_FILEBEAT
+    lxc exec $container_name -- rm -rf $TMP_FILEBEAT
+
+    log_info "Configuring filebeat"
+    lxc file push ./etc/filebeat.yml ${container_name}/etc/filebeat/
+    lxc exec $container_name -- chown root.root /etc/filebeat/filebeat.yml
+    lxc exec $container_name -- chmod go-w /etc/filebeat/filebeat.yml
+
+    lxc exec $container_name -- sed -i -e "s/ES_HOST/$IPREGEX/" /etc/filebeat/filebeat.yml
+    lxc exec $container_name -- sed -i -e "s/changeme/$ES_USER_PWD/" /etc/filebeat/filebeat.yml
+    lxc exec $container_name -- sed -i -e "s/LOCAL_HOST/$container_name/" /etc/filebeat/filebeat.yml
+
+    lxc exec $container_name -- systemctl enable --now filebeat
+    log_info "Filebeat installed"
+else
+    log_info "Filebeat already installed. Skipping"
+fi

@@ -1,0 +1,47 @@
+#!/bin/sh
+#       ____  __  ______________
+#      / __ \/ / / /  _/ ___/__ \
+#     / / / / /_/ // / \__ \__/ /
+#    / /_/ / __  // / ___/ / __/
+#   /_____/_/ /_/___//____/____/
+#
+#   DHIS2 restore database backup
+
+set -e
+
+PROG=$(basename "$0")
+BACKUPFILE="$1"
+DB="$2"
+
+usage() {
+  echo "Usage: $PROG <backup file (tar.gz)> <dbname>"
+  echo "  backup file: database dump in tar gzip format"
+  echo "  dbname: the name of the database to restore"
+  echo "Options:"
+  echo "  -h, --help       Display this help message"
+}
+
+[ -z "${BACKUPFILE}"  ] || [ -z "${DB}" ] && usage && exit 1
+
+
+
+if [ `lxc exec "$DB" -- systemctl is-active tomcat9` = "active" ]; then
+  echo "Cannot restore database while tomcat is running."
+  echo "First stop it by running lxc exec $DB -- service tomcat9 stop"
+  exit 1
+fi
+
+echo "Dropping database $DB..."
+sudo lxc exec postgres dropdb "$DB"
+
+echo "Recreating database..."
+sudo lxc exec postgres -- createdb -O "$DB" "$DB"
+
+echo "Restoring data to database..."
+zcat "${BACKUPFILE}" | grep -v 'ALTER .* OWNER' | sudo lxc exec postgres -- psql "$DB"
+echo "REASSIGN OWNED BY root TO $DB" | sudo lxc exec postgres -- psql "$DB"
+
+if [ "$?" -eq 0 ]; then
+  echo "Done!"
+  echo "You can now restart tomcat by running lxc exec $DB -- service tomcat9 start"
+fi

@@ -1,0 +1,156 @@
+LOGS_DIR=$(echo $CONTAINER | jq -r .directory)
+LOGS_BACKEND=$(echo $CONTAINER | jq -r .storage)
+
+CONTAINER_LOGS_DIR="/var/log/journal/remote"
+
+POOL_NAME="logs"
+VOLUME_NAME="logs"
+
+running_containers=$(lxc list -c n,s -f csv | grep -i running | cut -d ',' -f1)
+
+# Containers journal setup
+for container in $running_containers; do
+  containerz=$(echo $CONTAINERS | jq -r --arg cname "$container" '. | select(.name == $cname)')
+
+  if [[ "$containerz" ]]; then
+    container_name=$(echo $containerz | jq -r .name)
+    container_type=$(echo $containerz | jq -r .type)
+  else
+    container_name="$container"
+    container_type=""
+  fi
+
+  # Skip configuration for logger and SIEM
+  if ! [[ "$container_type" =~ "siem" ]] && ! [[ "$container_type" =~ "logger" ]] || ! [[ "$containerz" ]]; then
+    log_info "Configuring local journal logging for $container_name"
+    dhis2-set-journal -r -i "$IP" $container_name $container_type
+  fi
+done
+
+# Backend configuration
+if [[ $LOGS_BACKEND == fs ]]; then
+  log_info "Configuring filesystem backend..."
+  if ! [ -d "$LOGS_DIR" ]; then
+    log_error "Directory $LOGS_DIR not a directory or not present on host. Quitting"
+    exit 1
+  fi
+
+  storage_pool_exist=$(lxc storage list | grep -w $POOL_NAME)
+  if ! [ "$storage_pool_exist" ]; then
+    log_info "Creating storage pool $POOL_NAME"
+    lxc storage create $POOL_NAME dir source=$LOGS_DIR
+  else
+    log_warn "Storage pool $POOL_NAME already exist, skipping"
+  fi
+
+  volume_exist=$(lxc storage volume list $POOL_NAME | grep -w $VOLUME_NAME)
+  if ! [ "$volume_exist" ]; then
+    log_info "Creating storage volume $VOLUME_NAME"
+    lxc storage volume create $POOL_NAME $VOLUME_NAME
+  else
+   log_warn "Storage volume $VOLUM_NAME already exist, skipping"
+  fi  
+
+  lxc exec $NAME -- service systemd-journal-remote stop
+  lxc storage volume attach $POOL_NAME $VOLUME_NAME $NAME $CONTAINER_LOGS_DIR
+  lxc exec $NAME -- service systemd-journal-remote start
+
+  #lxc exec $NAME -- sed -e "s/journal\/remote/${CONTAINER_LOGS_DIR//\//\\/}/g" /lib/systemd/system/systemd-journal-remote.service
+elif [[ $LOGS_BACKEND == s3 ]]; then
+  log_info "Configuring S3 backend..."
+  # To get the latest version of s3cmd, use pip.
+  #lxc exec $NAME -- apt install python3-pip -y || exit 1
+  #lxc exec $NAME -- pip install s3cmd || exit 1
+  lxc exec $NAME -- apt install s3cmd -y || exit 1
+
+  S3CFG=$(echo $CONTAINER | jq -r '.config // empty')
+  S3_ACCESS_KEY=$(echo $CONTAINER | jq -r '.access_key // empty')
+  S3_SECRET_KEY=$(echo $CONTAINER | jq -r '.secret_key // empty')
+  S3_PROVIDER=$(echo $CONTAINER | jq -r '.provider // empty') # supports aws, contabo, digitalocean, gcp, linode
+  S3_BUCKET_LOCATION=$(echo $CONTAINER | jq -r '.location // empty')
+
+  if ! [ "$S3_PROVIDER" ]; then
+    S3_PROVIDER="aws"
+  fi
+
+  if ! [ "$S3_BUCKET_LOCATION" ]; then
+    S3_BUCKET_LOCATION="EU"
+  fi
+
+  if [ "$S3CFG" ]; then
+    lxc file push $S3CFG $NAME/root/.s3cfg || exit 1
+  elif [ "$S3_ACCESS_KEY" ] && [ "$S3_SECRET_KEY" ]; then
+    lxc file push ./etc/s3cfg $NAME/root/.s3cfg || exit 1
+    lxc exec $NAME -- sed -i "s/S3_ACCESS_KEY/$S3_ACCESS_KEY/" /root/.s3cfg
+    lxc exec $NAME -- sed -i "s/S3_SECRET_KEY/$S3_SECRET_KEY/" /root/.s3cfg
+
+    if [[ "$S3_PROVIDER" == "aws" ]]; then
+      lxc exec $NAME -- sed -i "s/HOST_BASE/s3.amazonaws.com/" /root/.s3cfg
+      lxc exec $NAME -- sed -i "s/HOST_BUCKET/%(bucket)s.s3.amazonaws.com/" /root/.s3cfg
+    elif [[ "$S3_PROVIDER" == "contabo" ]]; then
+      lxc exec $NAME -- sed -i "s/HOST_BASE/https\:\/\/eu2.contabostorage.com/" /root/.s3cfg
+      lxc exec $NAME -- sed -i "s/HOST_BUCKET/https\:\/\/eu2.contabostorage.com/" /root/.s3cfg
+    elif [[ "$S3_PROVIDER" == "digitalocean" ]]; then
+      lxc exec $NAME -- sed -i "s/HOST_BASE/nyc3.digitaloceanspaces.com/" /root/.s3cfg
+      lxc exec $NAME -- sed -i "s/HOST_BUCKET/%(bucket)s\.nyc3\.digitaloceanspaces\.com/" /root/.s3cfg
+    elif [[ "$S3_PROVIDER" == "gcp" ]]; then
+      lxc exec $NAME -- sed -i "s/HOST_BASE/storage.googleapis.com/" /root/.s3cfg
+      lxc exec $NAME -- sed -i "s/HOST_BUCKET/%(bucket).storage.googleapis.com/" /root/.s3cfg
+    elif [[ "$S3_PROVIDER" == "linode" ]]; then
+      if [[ "$S3_BUCKET_LOCATION" == "EU" ]]; then
+        cluster_id="eu-central-1"
+      elif [[ "$S3_BUCKET_LOCATION " == "US" ]]; then
+        cluster_id="us-east-1"
+      elif [[ "$S3_BUCKET_LOCATION " == "AP" ]]; then
+        cluster_id="ap-south-1"
+      elif [[ "$S3_BUCKET_LOCATION " == "US-SE" ]]; then
+        cluster_id="us-southeast-1"
+      else
+        log_error "Bucket location $S3_BUCKET_LOCATION not vadlid. Please use one among EU, US, AP, US-SE. Quitting"
+        exit 1
+      fi
+
+      S3_BUCKET_LOCATION="US" # per linode doc, it must be US even if other regions are used: https://www.linode.com/docs/products/storage/object-storage/guides/s3cmd/#configuring-s3cmd
+      lxc exec $NAME -- sed -i "s/HOST_BASE/$cluster_id.linodeobjects.com/" /root/.s3cfg
+      lxc exec $NAME -- sed -i "s/HOST_BUCKET/%(bucket)s.$cluster_id.linodeobjects.com/" /root/.s3cfg
+      #lxc exec $NAME -- sed -i "s/WEBSITE_ENDPOINT/http:\/\/%(bucket)s.website-$cluster_id.linodeobjects.com\//" /root/.s3cfg
+    else
+      log_error "S3 provider not supported. Quitting"
+      exit 1
+    fi
+
+  else
+    log_error "For S3 backend config or access_key and secret_key must be specified. Quitting"
+    exit 1
+  fi
+
+  lxc exec $NAME -- sed -i "s/BUCKET_LOCATION/$S3_BUCKET_LOCATION/" /root/.s3cfg
+  lxc exec $NAME -- chown root.root /root/.s3cfg
+  lxc exec $NAME -- chmod 640 /root/.s3cfg
+
+  # Backup script
+  cat <<EOF > s3backup.sh
+  #!/usr/bin/env bash
+  echo "[\$(date +%FT%T%Z)] Backup started."
+
+  tmpd=\$(mktemp -d)/
+  s3cmd=\$(which s3cmd)
+
+  # We need to copy the files before uploading because the files change while uploading thus failing the checksum
+  echo "[\$(date +%FT%T%Z)] Copying files..."
+  cp -rv ${CONTAINER_LOGS_DIR}/* \$tmpd
+
+  echo "[\$(date +%FT%T%Z)] Upload started."
+  \$s3cmd sync --no-progress --server-side-encryption \$tmpd s3://${LOGS_DIR}
+
+  rm -rfv \$tmpd
+  echo "[\$(date +%FT%T%Z)] Backup finished."
+EOF
+
+  lxc file push s3backup.sh $NAME/usr/local/bin/
+  rm -rf s3backup.sh
+
+  lxc exec $NAME -- chmod +x /usr/local/bin/s3backup.sh
+  # Upload logs every 5 minutes
+  lxc exec $NAME -- sh -c "(crontab -l ; echo \"*/5 * * * * /usr/local/bin/s3backup.sh >> /var/log/s3backup.log 2>&1\") | sort | uniq | crontab -"
+fi

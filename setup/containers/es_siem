@@ -1,0 +1,78 @@
+ES_BRANCH="8.x"
+IP=$(hostname -I | awk '{print $1}')
+arch=$(uname -m)
+if [[ "$arch" == "aarch64" ]]; then
+   arch="arm64"
+fi
+
+apt update
+apt upgrade -y
+
+### Elasticsearch ###
+apt-get install openjdk-17-jdk wget apt-transport-https curl gpgv gpgsm gnupg-l10n gnupg dirmngr -y
+
+export ES_JAVA_HOME=/usr/lib/jvm/java-17-openjdk-$arch
+
+wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo gpg --dearmor -o /usr/share/keyrings/elasticsearch-keyring.gpg
+
+echo "deb [signed-by=/usr/share/keyrings/elasticsearch-keyring.gpg] https://artifacts.elastic.co/packages/${ES_BRANCH}/apt stable main" | sudo tee -a /etc/apt/sources.list.d/elastic-${ES_BRANCH}.list
+
+apt-get update
+apt-get install elasticsearch -y
+
+echo "transport.host: $IP" >> /etc/elasticsearch/elasticsearch.yml
+
+echo 'transport.port: 9300' >> /etc/elasticsearch/elasticsearch.yml
+
+echo "network.host: $IP" >> /etc/elasticsearch/elasticsearch.yml
+
+echo 'http.port: 9200' >> /etc/elasticsearch/elasticsearch.yml
+
+
+echo '-Xms512m' >> /etc/elasticsearch/jvm.options
+
+echo '-Xmx512m' >> /etc/elasticsearch/jvm.options
+
+
+systemctl daemon-reload
+systemctl enable --now elasticsearch
+#systemctl restart elasticsearch
+
+elastic_new_passwd=$(/usr/share/elasticsearch/bin/elasticsearch-reset-password -u elastic -s -b)
+echo "New password elastic user: $elastic_new_passwd"
+echo "$elastic_new_passwd" > .es_elastic_passwd
+es_http_status=$(curl --cacert /etc/elasticsearch/certs/http_ca.crt -u "elastic:$elastic_new_passwd" -s -o /dev/null -w "%{http_code}" https://localhost:9200)
+
+if [ $es_http_status -ne 200 ]; then
+  echo "[X] Elasticsearch returned $es_http_status. Please troubleshoot the issue. Exiting [X]"
+  exit 1
+fi
+
+### logstash ###
+sudo apt install logstash -y
+
+systemctl enable --now logstash
+
+### kibana ###
+apt install kibana -y
+
+echo -e "server.port: 5601" >> /etc/kibana/kibana.yml
+
+echo -e "server.host: $HOSTNAME" >> /etc/kibana/kibana.yml
+
+echo -e 'elasticsearch.hosts: ["http://localhost:9200"]' >> /etc/kibana/kibana.yml
+
+echo -e 'telemetry.enabled: false' >> /etc/kibana/kibana.yml
+
+kibana_token=$(/usr/share/elasticsearch/bin/elasticsearch-create-enrollment-token -s kibana)
+/usr/share/kibana/bin/kibana-setup --enrollment-token "$kibana_token"
+
+# Needed for alerts and others
+tfile=$(mktemp)
+/usr/share/kibana/bin/kibana-encryption-keys generate -q > ${tfile}
+cat ${tfile} >> /etc/kibana/kibana.yml
+rm -rf ${tfile}
+
+systemctl daemon-reload
+systemctl enable --now kibana
+#systemctl restart kibana

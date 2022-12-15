@@ -1,0 +1,301 @@
+#!/usr/bin/env bash
+#       ____  __  ______________
+#      / __ \/ / / /  _/ ___/__ \
+#     / / / / /_/ // / \__ \__/ /
+#    / /_/ / __  // / ___/ / __/
+#   /_____/_/ /_/___//____/____/
+#
+#   Script to deploy a dhis2 instance
+
+source parse_config.sh
+
+source libs.sh
+
+PROG=`basename $0`
+CREATEDB=true
+TOMCAT_SETUP=/usr/local/etc/dhis/tomcat_setup
+GLOWROOT_SETUP=/usr/local/etc/dhis/glowroot-admin.json
+JAVA_VERSION="11"
+AUDIT2FILE=true
+PROXY_CONTAINER=$(echo $CONTAINERS | jq '. | select(.type | contains("proxy")) |.name' | tr -d '"')
+
+###############################################################
+usage() {
+  echo "Usage: $PROG [options] <instance>"
+  echo "  instance: name of the dhis2 instance to create"
+  echo "Options:"
+  echo "  -i <ip>                          IP address of the container (default picks next free IP ending in .10 to .19)"
+  echo "  -p <postgres_container>          Name of postgresql container (default postgres)"
+  echo "  -o <os_version>                  OS version for container (default $GUESTOS_VERSION)"
+  echo "  -h, --help                       Display this help message"
+  echo "  -n                               Do NOT create database for instance (default true)"
+  echo "  -j <8|11>                        Java version (default $JAVA_VERSION)"
+  exit 1
+}
+
+# main entry point
+while getopts p:i:o:nhj: opt; do
+  case $opt in
+    i) IP="${OPTARG}" ;;
+    p) PG="${OPTARG}" ;;
+    o) OS_VERSION="${OPTARG}" ;;
+    n) CREATEDB=false ;;
+    j) JAVA_VERSION="${OPTARG}"
+       [[ $JAVA_VERSION == "8" || $JAVA_VERSION == "11" ]] || usage
+       ;;
+    h) usage;;
+    *) log_error "Error: Unknown parameter '$OPTARG'."
+      exit 1;;
+  esac
+done
+
+shift $(($OPTIND - 1))
+
+if [ "$#" -lt 1 ]; then
+  usage
+fi
+
+NAME=$1
+
+USED=$(lxc list -cn4 --format csv |awk -F '.' '/1[0-9]? / {print strtonum($4)}')
+for FREE in {10..20}; do  echo $USED | grep -q -w $FREE || break; done
+# if FREE==20 then nothing found
+NETPREFIX=$(ip addr | awk '/inet.*lxdbr0/ {print $2}'|grep -o -e '^[0-9]*.[0-9]*.[0-9]*')
+FREEIP="${NETPREFIX}.${FREE}"
+
+IP=${IP:-${FREEIP}}
+PG=${PG:-postgres}
+OS_VERSION=${OS_VERSION:-${GUESTOS_VERSION}}
+
+# convert IP to regex
+IPREGEX=$(echo $IP |sed "s/\./\\\./g")
+
+# check Container name is available
+if [[ $(lxc list -c n --format csv | grep -w $NAME) ]]; then
+  log_error "Container $NAME already exists"
+  exit 1  
+fi
+
+# Check IP is available
+if [[ $(lxc list -c 4 |grep -w $IPREGEX) ]]; then
+  log_error "$IP already in use"
+  exit 1
+fi
+
+if [ $CREATEDB ]; then
+  # Check if Postgres container exists
+  if [ ! $(lxc list -c n --format csv | grep -w $PG) ]; then
+    log_error "No such container $PG"
+    exit 1
+  fi
+
+  # Check postgres version
+  PGVERSION=$(lxc exec $PG -- psql -t -c 'select version()' postgres |awk '/PostgreSQL/ {print $2}')
+  if [ -z $PGVERSION ]; then
+    log_error "Cant connect to a postgres server on $PG"
+    exit 1
+  fi
+
+  PGMAJOR=$(echo $PGVERSION |cut -d. -f 1)
+
+  # Check if database already exists
+  if [ $(lxc exec $PG -- psql -lqt --csv |cut -d ','  -f 1 |grep -w $NAME) ]; then
+    log_error "Database $NAME already exists"
+    exit 1
+  fi
+
+  # Check if database user already exists
+  if [ $(lxc exec $PG -- psql  --csv -qt -c '\du' postgres| cut -d,  -f1 |grep -w $NAME) ]; then
+    log_error "User $NAME already exists"
+    exit 1
+  fi
+
+  log_info "Creating database $NAME on $PG"
+  PASSWD=$(openssl rand -hex 20)
+  lxc exec $PG -- createuser $NAME
+  lxc exec $PG -- psql -c "ALTER user $NAME with PASSWORD '$PASSWD'" postgres 
+  lxc exec $PG -- createdb -O $NAME $NAME
+  lxc exec $PG -- psql -c "CREATE EXTENSION postgis" $NAME
+
+
+  # Fixing pg_hba.conf permissions
+  # get rid of any existing lines for the IP
+  lxc exec $PG -- sed -i "/$IPREGEX/d" /etc/postgresql/$PGMAJOR/main/pg_hba.conf
+  lxc exec $PG -- sed -i "$ a\
+    host $NAME $NAME $IP/32 md5" /etc/postgresql/$PGMAJOR/main/pg_hba.conf
+      lxc exec $PG -- service postgresql reload
+      # add firewall rule
+      lxc exec $PG ufw allow proto tcp from $IP to any port 5432
+fi
+
+log_info "Creating tomcat container $NAME ($GUESTOS $OS_VERSION)"
+
+lxc init $GUESTOS:$OS_VERSION $NAME
+
+# set ip addresses
+sudo lxc network attach $LXDBR $NAME eth0 eth0
+sudo lxc config device set $NAME eth0 ipv4.address $IP
+
+# lxc config set $NAME boot.autostart false
+lxc config set $NAME user.type "Tomcat server"
+lxc start $NAME 
+
+# wait for network to come up
+while true ; do
+  lxc exec $NAME -- nslookup archive.ubuntu.com >/dev/null && break || echo waiting for network; sleep 1 ;
+done
+
+# Added PROXY_IP to tomcat_setup
+sed "s/PROXY_IP/${PROXY_IP}/" $TOMCAT_SETUP > /tmp/tomcat_setup
+sed -i "s/JAVA_VERSION/${JAVA_VERSION}/" /tmp/tomcat_setup
+cat /tmp/tomcat_setup | lxc exec $NAME -- bash
+rm /tmp/tomcat_setup
+
+if [ $CREATEDB ]; then	
+  lxc exec $NAME -- sed -i "s/^connection.username.*$/connection.username = $NAME/" /opt/dhis2/dhis.conf
+  lxc exec $NAME -- sed -i "s/^connection.password.*$/connection.password = $PASSWD/" /opt/dhis2/dhis.conf
+  lxc exec $NAME -- sed -i "s/^connection.url.*$/connection.url = jdbc:postgresql:\/\/$PG\/$NAME/" /opt/dhis2/dhis.conf
+fi
+
+# Save audit logs to file
+if [ $AUDIT2FILE ]; then
+  lxc exec $NAME -- sh -c "echo 'audit.database = off \naudit.logger = on' >> /opt/dhis2/dhis.conf"
+fi
+
+if [[ $APM == "glowroot" ]]; then
+  log_info "Configuring glowroot"
+  sed -r '/glowroot.jar/ s/..(.*)/\1/' /usr/local/etc/dhis/tomcat_default > /tmp/tomcat9
+  lxc file push /tmp/tomcat9 $NAME/etc/default/tomcat9
+  lxc exec $NAME -- wget -P /opt https://github.com/glowroot/glowroot/releases/download/v0.13.6/glowroot-0.13.6-dist.zip 
+  lxc exec $NAME -- unzip -o /opt/glowroot-0.13.6-dist.zip -d /opt
+  lxc file push $GLOWROOT_SETUP $NAME/opt/glowroot/admin.json
+  lxc exec $NAME -- chown -R tomcat.tomcat /opt/
+  
+  # Set credentials for glowroot
+  dhis2-set-credential glowroot ${NAME}
+  
+  lxc exec $NAME ufw allow proto tcp from $PROXY_IP to any port 4000
+
+  rm /tmp/tomcat9
+else
+  lxc file push /usr/local/etc/dhis/tomcat_default $NAME/etc/default/tomcat9
+fi
+
+# clean out existing webapp
+echo 'rm -rf /var/lib/tomcat9/webapps/*' | lxc exec $NAME -- bash
+
+lxc exec $NAME -- chmod 644 /etc/default/tomcat9
+lxc exec $NAME -- systemctl daemon-reload
+lxc exec $NAME -- service rsyslog restart
+lxc exec $NAME -- service tomcat9 restart
+
+# Append to bottom /etc/hosts
+sudo sed -i "/$IP/d" /etc/hosts
+sudo sed -i "$ a\
+  $IP $NAME" /etc/hosts
+
+
+log_info "Configuring proxy"
+if [[ $PROXY == "nginx" ]]; then
+
+  cat <<EOF > /tmp/${NAME}.conf
+    # Proxy pass to servlet container
+
+    location /${NAME} {
+      proxy_pass                http://${IP}:8080/${NAME};
+      include                   /etc/nginx/proxy_params;
+   }
+EOF
+
+  lxc file push /tmp/${NAME}.conf ${PROXY_CONTAINER}/etc/nginx/upstream/${NAME}.conf
+  rm /tmp/${NAME}.conf
+  
+  if [[ $APM == "glowroot" ]]; then
+    cat <<EOF > /tmp/${NAME}-glowroot.conf
+    # Proxy pass to servlet container
+
+    location /${NAME}-glowroot {
+      proxy_pass                http://${IP}:4000/${NAME}-glowroot;
+      include                   /etc/nginx/proxy_params;
+   }
+EOF
+
+    lxc file push /tmp/${NAME}-glowroot.conf ${PROXY_CONTAINER}/etc/nginx/upstream/${NAME}-glowroot.conf
+    rm /tmp/${NAME}-glowroot.conf
+  fi
+  
+  lxc exec ${PROXY_CONTAINER} -- service nginx restart
+elif [[ $PROXY == "apache2" ]]; then
+#if proxy is apache2 ;
+  cat <<EOF > /tmp/${NAME}
+  <Location /${NAME}>
+    Require all granted
+    ProxyPass "http://${IP}:8080/${NAME}"
+    ProxyPassReverse "http://${IP}:8080/${NAME}"
+  </Location>
+EOF
+
+  lxc file push /tmp/${NAME} ${PROXY_CONTAINER}/etc/apache2/upstream/${NAME}
+  rm /tmp/${NAME}
+  
+  if [[ $APM == "glowroot" ]]; then
+    cat <<EOF > /tmp/${NAME}-glowroot
+  <Location /${NAME}-glowroot>
+    Require all granted
+    ProxyPass "http://${IP}:4000/${NAME}-glowroot"
+    ProxyPassReverse "http://${IP}:4000/${NAME}-glowroot"
+  </Location>
+EOF
+
+    lxc file push /tmp/${NAME}-glowroot ${PROXY_CONTAINER}/etc/apache2/upstream/${NAME}-glowroot
+    rm /tmp/${NAME}-glowroot
+  fi
+  
+  lxc exec ${PROXY_CONTAINER} -- service apache2 restart
+else
+  log_error "Proxy type '$PROXY' not supported"
+  exit 1
+fi
+
+# Configure logger if present
+logger_present=$(echo $CONTAINERS | jq -r '. | select(.type|test("logger"))')
+if [ "$logger_present" ]; then
+  log_info "Logger found. Configuring"
+  # Set journal logging
+  logger_name=$(echo $logger_present | jq -r .name)
+  logger_type=$(echo $logger_present | jq -r .type)
+
+  # Make sure logger is started
+  if [[ "$logger_name" =~ $(lxc list -c,n n -f csv | grep running) ]]; then
+    if [[ "$logger_type" == "journal_logger" ]]; then
+      logger_ip=$(echo $logger_present | jq -r .ip)
+      log_info "Configuring journal logger on '$NAME' to '$logger_name' ($logger_ip)"
+      dhis2-set-journal -r -i "$logger_ip" $NAME
+    fi
+  else
+    log_warn "Logger '$logger_name' not present or running. Skipping"
+  fi
+fi
+
+# Configure SIEM if present
+siem_present=$(echo $CONTAINERS | jq -r '. | select(.type|test("siem"))')
+if [ "$siem_present" ]; then
+  log_info "SIEM found. Configuring"
+  # Set SIEM
+  siem_name=$(echo $siem_present | jq -r .name)
+  siem_type=$(echo $siem_present | jq -r .type)
+
+  # Make sure logger is started
+  if [[ "$siem_name" =~ $(lxc list -c n,s -f csv | grep running) ]]; then
+    if [[ "$siem_type" == "es_siem" ]]; then
+      siem_ip=$(echo $siem_present | jq -r .ip)
+      log_info "Configuring Elasticsearch on '$NAME' to '$siem_name' ($siem_ip)"
+      dhis2-set-journal $NAME
+      dhis2-set-elasticsearch -i "$siem_ip" $NAME
+    fi
+  else
+    log_warn "SIEM container '$siem_name' not present or running. Skipping"
+  fi
+fi
+
+log_info "Instance '$NAME' created."
