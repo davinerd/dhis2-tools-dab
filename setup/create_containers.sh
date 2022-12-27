@@ -38,6 +38,7 @@ for CONTAINER in $CONTAINERS; do
   IP=$(echo $CONTAINER | jq -r .ip)
   TYPE=$(echo $CONTAINER | jq -r .type)
   OS_VERSION=$(echo $CONTAINER | jq --arg os_version $GUESTOS_VERSION -r '.guestos_version // $os_version')
+  REMOTE_HOST=$(echo $CONTAINER | jq -r '.remote_host // empty')
 
   if [ ! -f "containers/$TYPE" ]; then
 	  log_error "Profile for $TYPE doesn't exist .. exiting"
@@ -51,7 +52,18 @@ for CONTAINER in $CONTAINERS; do
   fi
 
   log_info "Creating $NAME of type $TYPE ($GUESTOS $OS_VERSION)"
-  lxc init $GUESTOS:$OS_VERSION $NAME
+  if [ "$REMOTE_HOST" ]; then
+    remote_host_exist=$(lxc cluster list | grep -w "$REMOTE_HOST")
+    if [ -z "$remote_host_exist" ]; then
+      log_warn "Remote host '$REMOTE_HOST' not found. Skipping..."
+      continue
+    else
+      lxc init $GUESTOS:$OS_VERSION $NAME --target $REMOTE_HOST
+    fi
+  else
+    lxc init $GUESTOS:$OS_VERSION $NAME
+  fi
+
   lxc network attach $LXDBR $NAME eth0 eth0
   lxc config device set $NAME eth0 ipv4.address $IP
 
@@ -69,6 +81,7 @@ for CONTAINER in $CONTAINERS; do
     sudo chown root.root /etc/ufw/before.rules
     sudo ufw reload
   fi
+
   lxc start $NAME
   # wait for network to come up
   while true ; do
