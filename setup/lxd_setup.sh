@@ -34,6 +34,7 @@ if [ $CLUSTER_ENABLED = true ]; then
     select yn in ${ifaces[@]}; do
         LOCAL_IP=$(ip address show $yn | egrep -o 'inet [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | cut -d' ' -f2)
         echo "Using $yn - $LOCAL_IP"
+        ufw allow in on $yn to any port 8443
         break
     done
 else
@@ -56,8 +57,11 @@ rm -rf $tmp_preseed
 # kernel tweaks
 cat configs/sysctl >> /etc/sysctl.conf
 
-sudo ufw allow in on lxdbr0
-sudo ufw allow out on lxdbr0
+ufw allow in on lxdbr0
+ufw allow out on lxdbr0
+
+ufw route allow in on lxdbr0
+ufw route allow out on lxdbr0
 
 source install_scripts.sh
 
