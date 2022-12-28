@@ -26,7 +26,7 @@ fi
 # LXD config
 LXDBR="lxdbr0"
 DEFAULT_INTERFACE=$(ip route |grep default | awk '{print $5}')
-LXDBRADDR=$(lxc network get $LXDBR ipv4.address)
+#LXDBRADDR=$(lxc network get $LXDBR ipv4.address)
 
 # ubuntu version for containers
 GUESTOS="ubuntu"
