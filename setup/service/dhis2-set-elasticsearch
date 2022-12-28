@@ -63,5 +63,5 @@ if ! [ "$(lxc exec $container_name -- dpkg -l | grep filebeat)" ]; then
     lxc exec $container_name -- systemctl enable --now filebeat
     log_info "Filebeat installed"
 else
-    log_info "Filebeat already installed. Skipping"
+    log_warn "Filebeat already installed. Skipping"
 fi

@@ -47,7 +47,7 @@ for CONTAINER in $CONTAINERS; do
 
   container_exist=$(lxc list -c n | grep -w $NAME)
   if ! [ -z "$container_exist" ]; then
-    log_info "Container $NAME already exist, skipping"
+    log_warn "Container $NAME already exist, skipping"
     continue
   fi
 
@@ -109,7 +109,7 @@ done
 if [[ $MONITORING == munin ]]; then
   #monitor_container_name=$(jq '.containers[] | select(.type | contains("monitor")) |.name' /usr/local/etc/dhis/containers.json | tr -d '"')
   monitor_container_name=$(echo $CONTAINERS | jq '. | select(.type | contains("monitor")) |.name' | tr -d '"')
-  log_info "Adding containers to monitor"
+  log_info "Adding containers to monitor..."
   for CONTAINER in $CONTAINERS; do
     NAME=$(echo $CONTAINER | jq -r .name)
     IP=$(echo $CONTAINER | jq -r .ip)
@@ -122,7 +122,7 @@ if [[ $MONITORING == munin ]]; then
         log_info "Adding $NAME to monitor"
         lxc exec $monitor_container_name -- sed -i -e "\$a[$NAME.lxd]\n  address $IP\n  use_node_name yes\n" /etc/munin/munin.conf
       else
-        log_info "Container $NAME already added to monitor. Skipping"
+        log_warn "Container $NAME already added to monitor. Skipping"
       fi
     fi
   done
