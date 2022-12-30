@@ -6,6 +6,9 @@ source libs.sh
 # Parse json config file
 source parse_config.sh
 
+# ufw status
+UFW_STATUS=$(sudo ufw status |grep Status|cut -d ' ' -f 2)
+
 if [[ $UFW_STATUS == "inactive" ]]; then
 	echo
 	echo "======= ERROR =========================================="
@@ -17,6 +20,26 @@ if [[ $UFW_STATUS == "inactive" ]]; then
 	echo "Then you can try to run ./create_containers again"
 	exit 1
 fi
+
+case $MONITORING in
+  munin)
+      # echo "Using munin monitor"
+      ;;
+  *)
+      echo "Monitoring tool '$MONITORING' not supported yet"
+      exit 1
+      ;;
+esac
+
+case $APM in
+  glowroot)
+      # echo "Using glowroot monitor"
+      ;;
+  *)
+      echo "APM '$APM' not supported yet"
+      exit 1
+      ;;
+esac
 
 # Make sure ufw is not blocking the lxd traffic
 sudo ufw allow in on $LXDBR

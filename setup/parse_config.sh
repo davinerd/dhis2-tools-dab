@@ -32,28 +32,7 @@ DEFAULT_INTERFACE=$(ip route |grep default | awk '{print $5}')
 GUESTOS="ubuntu"
 GUESTOS_VERSION="$(echo $CONFIG | jq -r '.guestos_version // 20.04')"
 
-# ufw status
-UFW_STATUS=$(sudo ufw status |grep Status|cut -d ' ' -f 2)
-
 # get configs for individual containers
 CONTAINERS=$(echo $CONFIG | jq -c .containers[])
 NAMES=$(echo $CONFIG | jq -r .containers[].name)
 TYPES=$(echo $CONFIG | jq -r .containers[].type)
-
-case $MONITORING in
-     munin)
-          # echo "Using munin monitor"
-          ;;
-     *)
-          echo "$MONITORING not supported yet"
-          ;;
-esac
-
-case $APM in
-     glowroot)
-          # echo "Using glowroot monitor"
-          ;;
-     *)
-          echo "$APM not supported yet"
-          ;;
-esac
