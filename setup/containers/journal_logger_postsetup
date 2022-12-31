@@ -12,27 +12,6 @@ if ! [[ "${VALID_BACKENDS[@]}" =~ "$LOGS_BACKEND" ]]; then
   exit 1
 fi
 
-running_containers=$(lxc list -c n,s -f csv | grep -i running | cut -d ',' -f1)
-
-# Containers journal setup
-for container in $running_containers; do
-  containerz=$(echo $CONTAINERS | jq -r --arg cname "$container" '. | select(.name == $cname)')
-
-  if [[ "$containerz" ]]; then
-    container_name=$(echo $containerz | jq -r .name)
-    container_type=$(echo $containerz | jq -r .type)
-  else
-    container_name="$container"
-    container_type=""
-  fi
-
-  # Skip configuration for logger and SIEM
-  if ! [[ "$container_type" =~ "siem" ]] && ! [[ "$container_type" =~ "logger" ]] || ! [[ "$containerz" ]]; then
-    log_info "Configuring local journal logging for $container_name"
-    dhis2-set-journal -r -i "$IP" $container_name $container_type
-  fi
-done
-
 # Backend configuration
 if [[ $LOGS_BACKEND == fs ]]; then
   log_info "Configuring filesystem backend..."
@@ -152,3 +131,23 @@ EOF
   # Upload logs every 5 minutes
   lxc exec $NAME -- sh -c "(crontab -l ; echo \"*/5 * * * * /usr/local/bin/s3backup.sh >> /var/log/s3backup.log 2>&1\") | sort | uniq | crontab -"
 fi
+
+# Containers journal setup
+running_containers=$(lxc list -c n,s -f csv | grep -i running | cut -d ',' -f1)
+for container in $running_containers; do
+  containerz=$(echo $CONTAINERS | jq -r --arg cname "$container" '. | select(.name == $cname)')
+
+  if [[ "$containerz" ]]; then
+    container_name=$(echo $containerz | jq -r .name)
+    container_type=$(echo $containerz | jq -r .type)
+  else
+    container_name="$container"
+    container_type=""
+  fi
+
+  # Skip configuration for logger and SIEM
+  if ! [[ "$container_type" =~ "siem" ]] && ! [[ "$container_type" =~ "logger" ]] || ! [[ "$containerz" ]]; then
+    log_info "Configuring local journal logging for $container_name"
+    dhis2-set-journal -r -i "$IP" $container_name $container_type
+  fi
+done
