@@ -1,5 +1,5 @@
 LOGS_DIR=$(echo $CONTAINER | jq -r .directory)
-LOGS_BACKEND=$(echo $CONTAINER | jq -r .storage)
+LOGS_BACKEND=$(echo $CONTAINER | jq --arg fs_backend "fs" -r '.storage // $fs_backend')
 
 CONTAINER_LOGS_DIR="/var/log/journal/remote"
 
@@ -66,16 +66,8 @@ elif [[ $LOGS_BACKEND == s3 ]]; then
   S3CFG=$(echo $CONTAINER | jq -r '.config // empty')
   S3_ACCESS_KEY=$(echo $CONTAINER | jq -r '.access_key // empty')
   S3_SECRET_KEY=$(echo $CONTAINER | jq -r '.secret_key // empty')
-  S3_PROVIDER=$(echo $CONTAINER | jq -r '.provider // empty') # supports aws, contabo, digitalocean, gcp, linode
-  S3_BUCKET_LOCATION=$(echo $CONTAINER | jq -r '.location // empty')
-
-  if ! [ "$S3_PROVIDER" ]; then
-    S3_PROVIDER="aws"
-  fi
-
-  if ! [ "$S3_BUCKET_LOCATION" ]; then
-    S3_BUCKET_LOCATION="EU"
-  fi
+  S3_PROVIDER=$(echo $CONTAINER | jq --arg aws_provider "aws" -r '.provider // $aws_provider') # supports aws, contabo, digitalocean, gcp, linode
+  S3_BUCKET_LOCATION=$(echo $CONTAINER | jq --arg eu_location "EU" -r '.location // $eu_location')
 
   if [ "$S3CFG" ]; then
     lxc file push $S3CFG $NAME/root/.s3cfg || exit 1
