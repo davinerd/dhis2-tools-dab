@@ -1,10 +1,16 @@
 LOGS_DIR=$(echo $CONTAINER | jq -r .directory)
 LOGS_BACKEND=$(echo $CONTAINER | jq --arg fs_backend "fs" -r '.storage // $fs_backend')
+VALID_BACKENDS=("fs" "s3")
 
 CONTAINER_LOGS_DIR="/var/log/journal/remote"
 
 POOL_NAME="logs"
 VOLUME_NAME="logs"
+
+if ! [[ "${VALID_BACKENDS[@]}" =~ "$LOGS_BACKEND" ]]; then
+  log_error "Backend '$LOGS_BACKEND' not supported. Quitting"
+  exit 1
+fi
 
 running_containers=$(lxc list -c n,s -f csv | grep -i running | cut -d ',' -f1)
 
