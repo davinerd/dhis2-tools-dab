@@ -52,7 +52,7 @@ elif [[ $LOGS_BACKEND == s3 ]]; then
   S3_ACCESS_KEY=$(echo $CONTAINER | jq -r '.access_key // empty')
   S3_SECRET_KEY=$(echo $CONTAINER | jq -r '.secret_key // empty')
   S3_PROVIDER=$(echo $CONTAINER | jq --arg aws_provider "aws" -r '.provider // $aws_provider') # supports aws, contabo, digitalocean, gcp, linode
-  S3_BUCKET_LOCATION=$(echo $CONTAINER | jq --arg eu_location "EU" -r '.location // $eu_location')
+  S3_BUCKET_LOCATION=$(echo $CONTAINER | jq --arg eu_location "eu-west-1" -r '.location // $eu_location')
 
   if [ "$S3CFG" ]; then
     lxc file push $S3CFG $NAME/root/.s3cfg || exit 1
