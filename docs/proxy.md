@@ -7,7 +7,7 @@ and nginx.
 
 Regardless of the choice of proxy, the following general principles apply:
 1.  The host based firewall should be restricted appropriately
-2.  Web servers should not be accessable via IP address.  A fully qualified domain name
+2.  Web servers should not be accessible via IP address.  A fully qualified domain name
 (FQDN) is required for TLS/SSL setup so its use should be enforced.  Allowing access via
 IP address leaves the host vulnerable to a wide variety of attackers who are constantly
 scanning and testing IP addresses
@@ -21,7 +21,7 @@ apache2 and nginx which can be adopted or modified as required.
 In general we
 recommend using letsencrypt free certificates where it other options are difficult.  The 
 type of difficulty often encountered include:
-i.   buearocratic problems/delay in getting an *official* government certificate;
+i.   bureaucratic problems/delay in getting an *official* government certificate;
 ii.  sanctions which prevent a country purchasing from US and EU companies; 
 iii. difficulty obtaining or using credit cards in many jurisdictions.
 The community has had good experience so far working with letsencrypt certificates.  Despite
