@@ -39,6 +39,11 @@ IPREGEX=$(echo $ES_IP | sed "s/\./\\\./g")
 ES_CREDS=$(get_creds elasticsearch)
 ES_USER_PWD=$(echo $ES_CREDS | jq -r .password)
 
+if [[ -z "$ES_USER_PWD" ]]; then
+  log_error "Password not found for service elasticsearch. Quitting"
+  exit 1
+fi
+
 if ! [ "$(lxc exec $container_name -- dpkg -l | grep filebeat)" ]; then
     log_info "Retrieving filebeat $FILEBEAT_VERSION ($arch)"
 
