@@ -4,7 +4,10 @@ source parse_config.sh # FIX: use absolute path
 lxc file pull monitor/etc/munin/.htpasswd /tmp/.htpasswd
 CHECK_HTPASSWD=$(cat /tmp/.htpasswd)
 if [[ $CHECK_HTPASSWD == "" ]]; then
-  dhis2-set-credential munin monitor
+  sudo dhis2-set-credential munin monitor
+  if [ $? -ne 0 ]; then
+    echo "There was an issue setting up munin credentials. Please consider doing it manually"
+  fi
 else
   rm /tmp/.htpasswd
 fi

@@ -172,7 +172,10 @@ if [[ $APM == "glowroot" ]]; then
   lxc exec $NAME -- chown -R tomcat.tomcat /opt/
   
   # Set credentials for glowroot
-  dhis2-set-credential glowroot ${NAME}
+  sudo dhis2-set-credential glowroot ${NAME}
+  if [ $? -ne 0 ]; then
+    log_warn "There was an issue setting up glowroot credentials. Please consider creating one manually"
+  fi
   
   lxc exec $NAME ufw allow proto tcp from $PROXY_IP to any port 4000
 
