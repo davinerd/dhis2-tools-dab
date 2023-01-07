@@ -43,7 +43,7 @@ if ! [ "$(lxc exec $container_name -- dpkg -l | grep filebeat)" ]; then
     log_info "Retrieving filebeat $FILEBEAT_VERSION ($arch)"
 
     if ! [ -f "${TMP_FILEBEAT}" ]; then
-        curl -s -L -o $ -O https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-$FILEBEAT_VERSION-$arch.deb || log_error "Cannot download filebeat. Quitting" && exit 1
+        curl -s -L -o $TMP_FILEBEAT -O https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-$FILEBEAT_VERSION-$arch.deb || { log_error "Cannot download filebeat. Quitting"; exit 1; }
     fi
 
     log_info "Installing filebeat"
@@ -61,7 +61,7 @@ if ! [ "$(lxc exec $container_name -- dpkg -l | grep filebeat)" ]; then
     lxc exec $container_name -- sed -i -e "s/LOCAL_HOST/$container_name/" /etc/filebeat/filebeat.yml
 
     lxc exec $container_name -- systemctl enable --now filebeat
-    log_info "Filebeat installed"
+    log_info "Filebeat configured. All good"
 else
     log_warn "Filebeat already installed. Skipping"
 fi
