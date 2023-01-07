@@ -6,7 +6,7 @@ This tool combines the work done by [Solidlines](https://github.com/solid-lines/
 
 This version includes, on top of the original tool's features:
 - Improved output
-- Improved credentials storage and retrival (consistency and security)
+- Improved credentials storage and retrieval (consistency and security)
 - More robust setup for increased flexibility and customization (reduced hardcoded values)
 - Possibility to specify different ubuntu versions for each container (in `containers.json` or via `dhis2-create-instance`)
 - LXD cluster support (enabled by default in `lxd_setup.sh`)
@@ -17,7 +17,7 @@ New container types have been added:
   - configure services output to journal (journald)
   - configure DHIS2, tomcat, proxy, database and all containers to log to journal
   - configure all containers to ship logs remotely to the journal logger container
-  - ship the logs outside the journal logger container. Supported backeds are (for now): host filesystem and S3 providers (aws, gcp, contabo, linode, digitalocean)
+  - ship the logs outside the journal logger container. Supported backends are (for now): host filesystem and S3 providers (aws, gcp, contabo, linode, digitalocean)
 - container type `siem_es`
   - setup a SIEM based on Elasticsearch
   - configure all containers to extract logs from journald and send them to elasticsearch via filebeat
@@ -26,7 +26,7 @@ For more information on how LXD cluster works, please refer to the [official gui
 
 For more detailed information on the container types, please read the [container types document](docs/container_types.md).
 
-For details on the added funtionalities to the service scripts, please refer to the [service scripts document](docs/service_scripts.md).
+For details on the added functionalities to the service scripts, please refer to the [service scripts document](docs/service_scripts.md).
 
 ## Install
 If this is the first time you are setting up dhis2-tools-dab, very few has changed from the original installation guide.
@@ -90,7 +90,7 @@ When cluster is enabled and containers don't have a `remote_host` key specified,
 You will need to specify the `remote_host` key for all containers if you want to force the creation on a specific host.
 
 ## Keys Reference
-Following are all the generic and global keys available for `containers.json`. For container-specific keys, please refere to the [container types document](docs/container_types.md).
+Following are all the generic and global keys available for `containers.json`. For container-specific keys, please refer to the [container types document](docs/container_types.md).
 
 A default value of `N/A` means that it must be assigned before running the scripts. Default values are either in the [containers.json.sample](setup/configs/containers.json.sample) file or in code.
 
