@@ -67,6 +67,6 @@ lxc exec $INSTANCE -- unzip -q -d /var/lib/tomcat9/webapps/$INSTANCE /dhis.war
 lxc exec $INSTANCE -- rm /dhis.war
 lxc exec $INSTANCE -- service tomcat9 start
 
-log_info "$INSTANCE DHIS2 deplyment done"
+log_info "$INSTANCE DHIS2 deployment done"
 
 rm $TEMPWAR || log_warn "$TEMPWAR not deleted.  Please delete manually."
