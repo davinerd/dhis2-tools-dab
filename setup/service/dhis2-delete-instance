@@ -58,15 +58,20 @@ else
 fi
 
 log_info "Deleting container"
-lxc stop $NAME
-lxc delete $NAME
+container_exist=$(lxc list -c n | grep -w $NAME)
+if ! [ -z "$container_exist" ]; then
+  log_warn "Container '$NAME' does not exit"
+else
+  lxc stop $NAME
+  lxc delete $NAME
+fi
 
 log_info "Removing database user and db"
 lxc exec ${DBCONTAINER} -- dropdb $NAME
 lxc exec ${DBCONTAINER} -- dropuser $NAME
 
 # Remove glowroot credentials
-log_info "Removing credentials"
+log_info "Removing glowroot credentials"
 remove_creds "${NAME}-glowroot"
 
 sudo sed -i "/.* $N$/d" /etc/hosts
