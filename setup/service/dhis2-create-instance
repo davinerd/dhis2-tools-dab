@@ -151,7 +151,7 @@ sed -i "s/JAVA_VERSION/${JAVA_VERSION}/" /tmp/tomcat_setup
 cat /tmp/tomcat_setup | lxc exec $NAME -- bash
 rm /tmp/tomcat_setup
 
-if [ $CREATEDB ]; then	
+if [ $CREATEDB ]; then
   lxc exec $NAME -- sed -i "s/^connection.username.*$/connection.username = $NAME/" /opt/dhis2/dhis.conf
   lxc exec $NAME -- sed -i "s/^connection.password.*$/connection.password = $PASSWD/" /opt/dhis2/dhis.conf
   lxc exec $NAME -- sed -i "s/^connection.url.*$/connection.url = jdbc:postgresql:\/\/$PG\/$NAME/" /opt/dhis2/dhis.conf
@@ -169,7 +169,7 @@ if [[ $APM == "glowroot" ]]; then
   lxc exec $NAME -- wget -P /opt https://github.com/glowroot/glowroot/releases/download/v0.13.6/glowroot-0.13.6-dist.zip 
   lxc exec $NAME -- unzip -o /opt/glowroot-0.13.6-dist.zip -d /opt
   lxc file push $GLOWROOT_SETUP $NAME/opt/glowroot/admin.json
-  lxc exec $NAME -- chown -R tomcat.tomcat /opt/
+  lxc exec $NAME -- chown -R tomcat.tomcat /opt/glowroot
   
   # Set credentials for glowroot
   sudo dhis2-set-credential glowroot ${NAME}
