@@ -4,8 +4,21 @@ apt-get -y upgrade
 apt-get -y install openjdk-JAVA_VERSION-jre-headless unzip
 apt-get -y install tomcat9 tomcat9-admin 
 
+# CIS Benchmark 1.2 START
 rm -rf /var/lib/tomcat9/webapps/*
 chown -R root.root /var/lib/tomcat9/webapps
+
+chown -R tomcat.tomcat /usr/share/tomcat9
+chown -R tomcat.tomcat /etc/tomcat9
+chown tomcat.tomcat /var/lib/tomcat9/
+
+chmod 750 /usr/share/tomcat9
+chmod 750 /usr/share/tomcat9/bin/*.sh
+chmod 750 /var/lib/tomcat9
+chmod 750 /etc/tomcat9
+chmod 600 /etc/tomcat9/*.xml /etc/tomcat9/*.properties
+chmod 400 /etc/tomcat9/web.xml
+# END
 
 mkdir /opt/dhis2
 chown -R tomcat.tomcat /opt/dhis2
