@@ -30,15 +30,17 @@ mkdir -p "$DHIS2_CONFIG_DIR"
 # set restricted permissions on copied files
 umask 137
 
-for FILE in $(find etc/*); do
-  BASE=$(basename $FILE)
-	if [ -f ${DHIS2_CONFIG_DIR}/$BASE ]; then
-    echo "$BASE already exists, not over-writing"
-  else
-    echo "Copying $BASE"
-    cp $FILE $DHIS2_CONFIG_DIR
-  fi
-done
+echo "Installing new configuration files"
+cp -rv etc/* $DHIS2_CONFIG_DIR
+#for FILE in $(find etc/*); do
+#  BASE=$(basename $FILE)
+#	if [ -f ${DHIS2_CONFIG_DIR}/$BASE ]; then
+#    echo "$BASE already exists, not over-writing"
+#  else
+#    echo "Copying $BASE"
+#    cp $FILE $DHIS2_CONFIG_DIR
+#  fi
+#done
 
 # copy credentials file
 if [ -f ${DHIS2_CONFIG_DIR}/.credentials.json ]; then
