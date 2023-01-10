@@ -12,9 +12,9 @@ This script creates a container suitable to run DHIS2. What it does is:
 * configure logger (if present)
 * configure SIEM (if present)
 
-By default, the script configures DHIS2 to log audit trails to file via the `AUDIT2FILE` variable, `true` by default. If will setup the audit system accordingly to [the official documentation](https://docs.dhis2.org/en/manage/performing-system-administration/dhis-core-version-239/audit.html#examples).
+By default, the script configures DHIS2 to log audit trails to file via the `AUDIT2FILE` variable, `true` by default. If will setup the audit system accordingly to [the official documentation](https://docs.dhis2.org/en/manage/performing-system-administration/dhis-core-version-239/audit.html#examples). Works only for DHIS2 version 2.35 and above.
 
-Please note that while this setting works on most version, **it does not work all the time**. In some edge cases, with this setting, audit system is turned off completely, not saving trails in database nor file: **we strongly suggest you to double check with your version the impact of such changes by monitoring the `audit` table or the `logs/` directory for audit trails**.
+Please note that while this setting works on most versions, **it does not work all the time**. In some edge cases, with this setting, audit system is turned off completely, not saving trails in database nor file: **we strongly suggest you to double check with your version the impact of such changes by monitoring the `audit` table or the `logs/` directory for audit trails**.
 
 To verify if the logs are stored in the database, you can use [dhis2-audit-data-extractor](https://github.com/dhis2/dhis2-utils/tree/master/tools/dhis2-audit-data-extractor).
 
