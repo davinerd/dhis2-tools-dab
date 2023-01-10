@@ -70,7 +70,7 @@ lxc exec $INSTANCE -- service tomcat9 start
 log_info "$INSTANCE DHIS2 deployment done"
 
 while true ; do
-  lxc exec $INSTANCE -- curl -s -k -u admin:district http://localhost:8080/${INSTANCE}/api/me >/dev/null && break || log_info "Waiting for DHIS2 to be up (sleep 10s)"; sleep 10 ;
+  lxc exec $INSTANCE -- curl -s --connect-timeout 5 -k -u admin:district http://localhost:8080/${INSTANCE}/api/me >/dev/null && break || log_info "Waiting for DHIS2 to be up (sleep 10s)"; sleep 10 ;
 done
 
 log_info "DHIS2 it's up and running. It has been successfully deployed."
