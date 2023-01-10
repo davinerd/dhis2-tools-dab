@@ -7,8 +7,6 @@
 #
 #   Script to deploy a dhis2 instance
 
-source parse_config.sh
-
 source libs.sh
 
 PROG=`basename $0`

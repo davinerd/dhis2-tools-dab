@@ -8,7 +8,6 @@
 #   Script to completely remove a dhis2 instance
 
 source libs.sh
-source parse_config.sh
 
 PROG=`basename $0`
 
