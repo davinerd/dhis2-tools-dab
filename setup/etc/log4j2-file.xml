@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" monitorInterval="10">
+    <Properties>
+        <Property name="layout">* %-5p %d{ISO8601} %m (%F [%t])%n</Property>
+        <Property name="file_analytics">/opt/dhis2/logs/dhis-analytics-table.log</Property>
+        <Property name="file_data_exchange">/opt/dhis2/logs/dhis-data-exchange.log</Property>
+        <Property name="file_data_sync">/opt/dhis2/logs/dhis-data-sync.log</Property>
+        <Property name="file_metadata_sync">/opt/dhis2/logs/dhis-metadata-sync.log</Property>
+        <Property name="file_push_analysis">/opt/dhis2/logs/dhis-push-analysis.log</Property>
+        <Property name="file_audit">/opt/dhis2/logs/dhis-audit.log</Property>
+        <Property name="file_root">/opt/dhis2/logs/dhis.log</Property>
+    </Properties>
+    <Appenders>
+        <Console name="console" target="SYSTEM_OUT">
+            <PatternLayout pattern="* %-5p %d{ISO8601} %m (%F [%t]) %X{sessionId} %X{xRequestID}%n"/>
+        </Console>
+        <!-- https://logging.apache.org/log4j/2.x/manual/appenders.html -->
+        <RollingFile name="appender_${file_analytics}" fileName="${file_analytics}" filePattern="${file_analytics}.%i">
+            <PatternLayout pattern="${layout}"/>
+            <Policies>
+                <SizeBasedTriggeringPolicy size="100 MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="1"/>
+        </RollingFile>
+        <RollingFile name="appender_${file_data_exchange}" fileName="${file_data_exchange}"
+                     filePattern="${file_data_exchange}.%i">
+            <PatternLayout pattern="${layout}"/>
+            <Policies>
+                <SizeBasedTriggeringPolicy size="100 MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="1"/>
+        </RollingFile>
+        <RollingFile name="appender_${file_data_sync}" fileName="${file_data_sync}" filePattern="${file_data_sync}.%i">
+            <PatternLayout pattern="${layout}"/>
+            <Policies>
+                <SizeBasedTriggeringPolicy size="100 MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="1"/>
+        </RollingFile>
+        <RollingFile name="appender_${file_metadata_sync}" fileName="${file_metadata_sync}"
+                     filePattern="${file_metadata_sync}.%i">
+            <PatternLayout pattern="${layout}"/>
+            <Policies>
+                <SizeBasedTriggeringPolicy size="100 MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="1"/>
+        </RollingFile>
+        <RollingFile name="appender_${file_push_analysis}" fileName="${file_push_analysis}"
+                     filePattern="${file_push_analysis}.%i">
+            <PatternLayout pattern="${layout}"/>
+            <Policies>
+                <SizeBasedTriggeringPolicy size="100 MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="1"/>
+        </RollingFile>
+        <RollingFile name="appender_${file_audit}" fileName="${file_audit}" filePattern="${file_audit}.%i">
+            <PatternLayout pattern="${layout}"/>
+            <Policies>
+                <CronTriggeringPolicy evaluateOnStartup="true" schedule="0 0 0 * * ?"/>
+            </Policies>
+            <!-- https://logging.apache.org/log4j/2.x/log4j-core/apidocs/org/apache/logging/log4j/core/appender/rolling/DefaultRolloverStrategy.Builder.html#withCompressionLevelStr-java.lang.String- "applies only to ZIP files" -->
+            <!-- compressionLevel="9" https://docs.oracle.com/javase/8/docs/api/java/util/zip/Deflater.html#BEST_COMPRESSION -->
+            <DefaultRolloverStrategy compressionLevel="9" fileIndex="nomax"/>
+        </RollingFile>
+        <RollingFile name="appender_${file_root}" fileName="${file_root}" filePattern="${file_root}.%i">
+            <PatternLayout pattern="${layout}"/>
+            <Policies>
+                <SizeBasedTriggeringPolicy size="100 MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="1"/>
+        </RollingFile>
+    </Appenders>
+
+    <Loggers>
+        <Logger name="org.hisp.dhis" level="INFO" additivity="true"/>
+        <Logger name="org.hisp.dhis.webapi.mvc" level="WARN" additivity="false"/>
+        <Logger name="org.hibernate.cache.ehcache.internal.strategy.AbstractReadWriteEhcacheAccessStrategy"
+                level="ERROR" additivity="false"/>
+        <Logger name="org.hibernate.cache.ehcache.AbstractEhcacheRegionFactory" level="ERROR" additivity="false"/>
+        <Logger name="org.hibernate.engine.internal.StatefulPersistenceContext" level="ERROR" additivity="false"/>
+        <Logger name="org.springframework.web.servlet.view.ContentNegotiatingViewResolver" level="ERROR"
+                additivity="false"/>
+        <Logger name="org.hibernate.orm.deprecation" level="ERROR" additivity="false"/>
+        <Logger name="org.apache.activemq" level="ERROR" additivity="false"/>
+        <Logger name="org.hibernate" level="ERROR" additivity="false"/>
+        <Logger name="io.debezium.connector.postgresql.PostgresTaskContext" level="ERROR" additivity="false"/>
+
+        <!-- This is a conversion of the programmatic config https://github.com/dhis2/dhis2-core/blob/5d796ef2519d7fab9310ece31add0f40741c8d71/dhis-2/dhis-support/dhis-support-system/src/main/java/org/hisp/dhis/system/log/Log4JLogConfigInitializer.java-->
+        <!-- into a pure log4j2.xml -->
+        <!-- Notes on the config: -->
+        <!-- additivity=true https://logging.apache.org/log4j/2.x/manual/configuration.html#Additivity is how we log to the console (handled by Root logger) and the file appender (handled by this Logger) -->
+        <!-- includeLocation=true https://logging.apache.org/log4j/2.x/manual/async.html#Location "This is an expensive operation: 1.3 - 5 times slower for synchronous loggers." -->
+        <Logger name="org.hisp.dhis.analytics.table" level="INFO" additivity="true" includeLocation="true">
+            <AppenderRef ref="appender_${file_analytics}"/>
+        </Logger>
+        <Logger name="org.hisp.dhis.resourcetable" level="INFO" additivity="true" includeLocation="true">
+            <AppenderRef ref="appender_${file_analytics}"/>
+        </Logger>
+        <Logger name="org.hisp.dhis.dxf2" level="INFO" additivity="true" includeLocation="true">
+            <AppenderRef ref="appender_${file_data_exchange}"/>
+        </Logger>
+        <Logger name="org.hisp.dhis.dxf2.sync" level="INFO" additivity="true" includeLocation="true">
+            <AppenderRef ref="appender_${file_data_sync}"/>
+        </Logger>
+        <Logger name="org.hisp.dhis.dxf2.metadata" level="INFO" additivity="true" includeLocation="true">
+            <AppenderRef ref="appender_${file_metadata_sync}"/>
+        </Logger>
+        <Logger name="org.hisp.dhis.pushanalysis" level="INFO" additivity="true" includeLocation="true">
+            <AppenderRef ref="appender_${file_push_analysis}"/>
+        </Logger>
+
+        <Logger name="org.hisp.dhis.audit" level="INFO" additivity="false" includeLocation="true">
+            <AppenderRef ref="appender_${file_audit}"/>
+        </Logger>
+
+        <!-- Setting logging level in `dhis.conf` like logging.level.org.springframework=DEBUG -->
+        <!-- logs will only go to the console and not also to dhis.log; I did check the behavior with the current implementation -->
+        <!-- Since loggers like this will have to be configured in implementers own log4j2.xml they are free to adjust it in any way they need -->
+        <Logger name="org.hisp.dhis.tracker" level="DEBUG" additivity="false" includeLocation="true">
+            <AppenderRef ref="console"/>
+        </Logger>
+
+        <Root level="WARN">
+            <AppenderRef ref="console"/>
+            <AppenderRef ref="appender_${file_root}" level="INFO"/>
+        </Root>
+    </Loggers>
+</Configuration>

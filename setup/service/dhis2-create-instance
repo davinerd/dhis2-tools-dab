@@ -13,8 +13,9 @@ source libs.sh
 
 PROG=`basename $0`
 CREATEDB=true
-TOMCAT_SETUP=/usr/local/etc/dhis/tomcat_setup
-GLOWROOT_SETUP=/usr/local/etc/dhis/glowroot-admin.json
+TOMCAT_SETUP="${DHIS2_CONFIG_DIR}/tomcat_setup"
+TOMCAT_DEFAULT="${DHIS2_CONFIG_DIR}/tomcat_default"
+GLOWROOT_SETUP="${DHIS2_CONFIG_DIR}/glowroot-admin.json"
 JAVA_VERSION="11"
 AUDIT2FILE=true
 PROXY_CONTAINER=$(echo $CONTAINERS | jq '. | select(.type | contains("proxy")) |.name' | tr -d '"')
@@ -157,14 +158,9 @@ if [ $CREATEDB ]; then
   lxc exec $NAME -- sed -i "s/^connection.url.*$/connection.url = jdbc:postgresql:\/\/$PG\/$NAME/" /opt/dhis2/dhis.conf
 fi
 
-# Save audit logs to file
-if [ $AUDIT2FILE ]; then
-  lxc exec $NAME -- sh -c "echo 'audit.database = off \naudit.logger = on' >> /opt/dhis2/dhis.conf"
-fi
-
 if [[ $APM == "glowroot" ]]; then
   log_info "Configuring glowroot"
-  sed -r '/glowroot.jar/ s/..(.*)/\1/' /usr/local/etc/dhis/tomcat_default > /tmp/tomcat9
+  sed -r '/glowroot.jar/ s/..(.*)/\1/' ${TOMCAT_DEFAULT} > /tmp/tomcat9
   lxc file push /tmp/tomcat9 $NAME/etc/default/tomcat9
   lxc exec $NAME -- wget -P /opt https://github.com/glowroot/glowroot/releases/download/v0.13.6/glowroot-0.13.6-dist.zip 
   lxc exec $NAME -- unzip -o /opt/glowroot-0.13.6-dist.zip -d /opt
@@ -181,7 +177,16 @@ if [[ $APM == "glowroot" ]]; then
 
   rm /tmp/tomcat9
 else
-  lxc file push /usr/local/etc/dhis/tomcat_default $NAME/etc/default/tomcat9
+  lxc file push ${TOMCAT_DEFAULT} $NAME/etc/default/tomcat9
+fi
+
+# Save audit logs to file
+if [ $AUDIT2FILE ]; then
+  log_info "Configuring audit logs to file"
+  lxc exec $NAME -- sh -c "echo 'audit.database = off \naudit.logger = on' >> /opt/dhis2/dhis.conf"
+  lxc file push ${DHIS2_CONFIG_DIR}/log4j2-file.xml $NAME/opt/dhis2/
+  lxc exec $NAME -- chown root.tomcat /opt/dhis2/log4j2-file.xml
+  lxc exec $NAME -- sh -c "echo 'JAVA_OPTS=\"\${JAVA_OPTS} -Dlog4j.configuration=/opt/dhis2/log4j2-file.xml -Dlog4j2.configurationFile=/opt/dhis2/log4j2-file.xml\"' >> /etc/default/tomcat9"
 fi
 
 lxc exec $NAME -- chmod 644 /etc/default/tomcat9
