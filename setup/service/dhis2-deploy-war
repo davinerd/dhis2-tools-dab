@@ -73,5 +73,9 @@ while true ; do
   lxc exec $INSTANCE -- curl -s --connect-timeout 5 -k -u admin:district http://localhost:8080/${INSTANCE}/api/me >/dev/null && break || log_info "Waiting for DHIS2 to be up (sleep 10s)"; sleep 10 ;
 done
 
+# Let's rotate admin credentials
+log_info "Rotating admin user credentials"
+sudo dhis2-set-credential dhis2-admin $INSTANCE
+
 log_info "DHIS2 it's up and running. It has been successfully deployed."
 rm $TEMPWAR || log_warn "$TEMPWAR not deleted.  Please delete manually."
