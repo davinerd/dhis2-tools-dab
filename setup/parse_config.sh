@@ -1,6 +1,9 @@
 # Parse the contents of containers.json into bash variables
 CONFIG=$(cat /usr/local/etc/dhis/containers.json)
 
+DHIS2_CONFIG_DIR="/usr/local/etc/dhis"
+DHIS2_BIN_DIR="/usr/local/bin"
+
 # Abort script on errors
 #set -o errexit
 # test for a valid json config
