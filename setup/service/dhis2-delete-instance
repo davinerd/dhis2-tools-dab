@@ -74,4 +74,8 @@ lxc exec ${DBCONTAINER} -- dropuser $NAME
 log_info "Removing glowroot credentials"
 remove_creds "${NAME}-glowroot"
 
+# Remove admin creds
+log_info "Removing admin user credentials"
+remove_creds "${NAME}-dhis2-admin"
+
 sudo sed -i "/.* $N$/d" /etc/hosts
