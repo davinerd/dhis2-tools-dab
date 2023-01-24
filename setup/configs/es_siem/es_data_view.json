@@ -1,0 +1,8 @@
+{
+    "data_view": {
+        "title": "filebeat-*",
+        "name": "main",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": []
+    }
+}

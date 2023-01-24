@@ -4,8 +4,17 @@ lxc exec $NAME -- rm -rf .es_elastic_passwd
 creds_str='{"service":"elasticsearch","username":"elastic","password":"'${ES_USER_PWD}'"}'
 save_creds $creds_str
 
-running_containers=$(lxc list -c n,s -f csv | grep -i running | cut -d ',' -f1)
+log_info "Configuring Elasticsearch and Kibana"
+lxc file push configs/es_siem/ $NAME/root/ -r
 
+ack=$(lxc exec $NAME -- sh -c "curl -XPOST -u \"elastic:${ES_USER_PWD}\" http://${IP}:5601/api/data_views/data_view -d @/root/es_siem/es_data_view.json -H 'Content-Type:application/json' -H 'kbn-xsrf: true' -s")
+if [[ $(jq -r .statusCode <<< $ack) != "200" ]]; then
+  log_error "Failed to configure Kibana default data view: $ack"
+fi
+
+lxc exec $NAME -- rm -rf es_siem/
+
+running_containers=$(lxc list -c n,s -f csv | grep -i running | cut -d ',' -f1)
 for container in $running_containers; do
   containerz=$(echo $CONTAINERS | jq -r --arg cname "$container" '. | select(.name == $cname)')
 
