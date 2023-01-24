@@ -289,7 +289,7 @@ if [ "$siem_present" ]; then
   siem_type=$(echo $siem_present | jq -r .type)
 
   # Make sure logger is started
-  if [[ "$siem_name" =~ $(lxc list -c n,s -f csv | grep -i running) ]]; then
+  if [[ $(lxc list -c n,s -f csv | grep -i running) =~ "$siem_name" ]]; then
     if [[ "$siem_type" == "es_siem" ]]; then
       siem_ip=$(echo $siem_present | jq -r .ip)
       log_info "Configuring Elasticsearch on '$NAME' to '$siem_name' ($siem_ip)"
