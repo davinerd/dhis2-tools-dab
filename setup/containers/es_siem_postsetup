@@ -39,3 +39,39 @@ for container in $running_containers; do
     dhis2-set-elasticsearch -i "$IP" $container_name
   fi
 done
+
+log_info "Configuring Kibana proxy access"
+PROXY_CONTAINER=$(echo $CONTAINERS | jq '. | select(.type | contains("proxy")) |.name' | tr -d '"')
+
+if [[ $PROXY == "nginx" ]]; then
+
+  cat <<EOF > /tmp/${NAME}.conf
+    # Proxy pass to servlet container
+
+    location /${NAME} {
+      proxy_pass                http://${IP}:5601;
+      include                   /etc/nginx/proxy_params;
+   }
+EOF
+  lxc file push /tmp/${NAME}.conf ${PROXY_CONTAINER}/etc/nginx/upstream/${NAME}.conf
+  rm /tmp/${NAME}.conf
+
+  lxc exec ${PROXY_CONTAINER} -- service nginx restart
+
+elif [[ $PROXY == "apache2" ]]; then
+#if proxy is apache2 ;
+  cat <<EOF > /tmp/${NAME}
+  <Location /${NAME}>
+    Require all granted
+    ProxyPass "http://${IP}:5601"
+    ProxyPassReverse "http://${IP}:5601"
+  </Location>
+EOF
+
+  lxc file push /tmp/${NAME} ${PROXY_CONTAINER}/etc/apache2/upstream/${NAME}
+  rm /tmp/${NAME}
+
+  lxc exec ${PROXY_CONTAINER} -- service apache2 restart
+else
+  log_warn "Proxy type '$PROXY' not supported. SIEM not configured for proxy access"
+fi
