@@ -75,3 +75,11 @@ EOF
 else
   log_warn "Proxy type '$PROXY' not supported. SIEM not configured for proxy access"
 fi
+
+lxc exec $NAME -- sh -c "echo \"server.basePath: \"/${NAME}\"\" >> /etc/kibana/kibana.yml"
+lxc exec $NAME -- sh -c "echo \"server.publicBaseUrl: \"https://${FQDN}/${NAME}\"\" >> /etc/kibana/kibana.yml"
+lxc exec $NAME -- sh -c "echo 'server.rewriteBasePath: true'  >> /etc/kibana/kibana.yml"
+
+lxc exec $NAME -- service kibana restart
+
+log_info "Done configuring SIEM"

@@ -66,10 +66,6 @@ echo -e 'elasticsearch.hosts: ["http://localhost:9200"]' >> ${kibana_conf}
 
 echo -e 'telemetry.enabled: false' >> ${kibana_conf}
 
-echo -e "server.basePath: \"/${HOSTNAME}\"" >> ${kibana_conf}
-
-echo -e 'server.rewriteBasePath: true'  >> ${kibana_conf}
-
 kibana_token=$(/usr/share/elasticsearch/bin/elasticsearch-create-enrollment-token -s kibana)
 /usr/share/kibana/bin/kibana-setup --enrollment-token "$kibana_token"
 
