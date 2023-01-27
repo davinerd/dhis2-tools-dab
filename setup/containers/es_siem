@@ -56,17 +56,19 @@ systemctl enable --now logstash
 ### kibana ###
 apt install kibana -y
 
-echo -e "server.port: 5601" >> /etc/kibana/kibana.yml
+kibana_conf="/etc/kibana/kibana.yml"
 
-echo -e "server.host: $HOSTNAME" >> /etc/kibana/kibana.yml
+echo -e "server.port: 5601" >> ${kibana_conf}
 
-echo -e 'elasticsearch.hosts: ["http://localhost:9200"]' >> /etc/kibana/kibana.yml
+echo -e "server.host: $HOSTNAME" >> ${kibana_conf}
 
-echo -e 'telemetry.enabled: false' >> /etc/kibana/kibana.yml
+echo -e 'elasticsearch.hosts: ["http://localhost:9200"]' >> ${kibana_conf}
 
-echo -e "server.basePath: \"/${HOSTNAME}\"" >> /etc/kibana/kibana.yml
+echo -e 'telemetry.enabled: false' >> ${kibana_conf}
 
-echo -e 'server.rewriteBasePath: true'  >> /etc/kibana/kibana.yml
+echo -e "server.basePath: \"/${HOSTNAME}\"" >> ${kibana_conf}
+
+echo -e 'server.rewriteBasePath: true'  >> ${kibana_conf}
 
 kibana_token=$(/usr/share/elasticsearch/bin/elasticsearch-create-enrollment-token -s kibana)
 /usr/share/kibana/bin/kibana-setup --enrollment-token "$kibana_token"
