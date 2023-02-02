@@ -48,7 +48,7 @@ if [[ $container_type == "" ]]; then # this is a DHIS2 instance
 elif [[ "$container_type" == "nginx_proxy" ]]; then
     log_info "Configuring nginx to log to journal error logs and HTTP access logs"
     lxc exec $container_name -- sed -i '/error_log/s/.*/error_log syslog:server=unix:\/dev\/log info;/' /etc/nginx/nginx.conf
-    lxc exec $container_name -- sed '0,/access_log/{/access_log/d}' /etc/nginx/nginx.conf
+    lxc exec $container_name -- sed -i '0,/access_log/{/access_log/d}' /etc/nginx/nginx.conf
     lxc exec $container_name -- sed -i '/http {/a  access_log   syslog:server=unix:\/dev\/log;' /etc/nginx/nginx.conf
     lxc exec $container_name -- service nginx reload
 elif [[ "$container_type" == "apache_proxy" ]] || [[ "$container_type" == "munin_monitor" ]]; then
