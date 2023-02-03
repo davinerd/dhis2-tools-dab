@@ -132,32 +132,36 @@ done
 if [[ $MONITORING == munin ]]; then
   #monitor_container_name=$(jq '.containers[] | select(.type | contains("monitor")) |.name' /usr/local/etc/dhis/containers.json | tr -d '"')
   monitor_container_name=$(echo $CONTAINERS | jq '. | select(.type | contains("monitor")) |.name' | tr -d '"')
-  log_info "Adding containers to monitor..."
-  for CONTAINER in $CONTAINERS; do
-    NAME=$(echo $CONTAINER | jq -r .name)
-    IP=$(echo $CONTAINER | jq -r .ip)
-    TYPE=$(echo $CONTAINER | jq -r .type)
+  if ! [[ "$monitor_container_name" =~ $(lxc list -c n,s -f csv | grep -i running) ]]; then
+    log_warn "Monitor container not running. Skipping"
+  else
+    log_info "Adding containers to monitor..."
+    for CONTAINER in $CONTAINERS; do
+      NAME=$(echo $CONTAINER | jq -r .name)
+      IP=$(echo $CONTAINER | jq -r .ip)
+      TYPE=$(echo $CONTAINER | jq -r .type)
 
-    if [[ $TYPE != munin_monitor ]]; then
-      # avoid adding two times the same container
-      monitored=$(lxc exec $monitor_container_name -- grep "$NAME" /etc/munin/munin.conf)
-      if  [ -z "$monitored" ]; then
-        log_info "Adding $NAME to monitor"
-        lxc exec $monitor_container_name -- sed -i -e "\$a[$NAME.lxd]\n  address $IP\n  use_node_name yes\n" /etc/munin/munin.conf
-      else
-        log_warn "Container $NAME already added to monitor. Skipping"
+      if [[ $TYPE != munin_monitor ]]; then
+        # avoid adding two times the same container
+        monitored=$(lxc exec $monitor_container_name -- grep "$NAME" /etc/munin/munin.conf)
+        if  [ -z "$monitored" ]; then
+          log_info "Adding $NAME to monitor"
+          lxc exec $monitor_container_name -- sed -i -e "\$a[$NAME.lxd]\n  address $IP\n  use_node_name yes\n" /etc/munin/munin.conf
+        else
+          log_warn "Container $NAME already added to monitor. Skipping"
+        fi
       fi
+    done
+
+    # Also monitor the host
+    sudo apt-get install munin-node -y
+    if ! [ "$(grep "$MUNIN_IP" /etc/munin/munin-node.conf)" ]; then
+      sudo echo "cidr_allow $MUNIN_IP/32" >> /etc/munin/munin-node.conf
+      sudo ufw allow proto tcp from $MUNIN_IP to any port 4949
     fi
-  done
+    sudo service munin-node restart
 
-  # Also monitor the host
-  sudo apt-get install munin-node -y
-  if ! [ "$(grep "$MUNIN_IP" /etc/munin/munin-node.conf)" ]; then
-    sudo echo "cidr_allow $MUNIN_IP/32" >> /etc/munin/munin-node.conf
-    sudo ufw allow proto tcp from $MUNIN_IP to any port 4949
+    lxc exec $monitor_container_name -- /etc/init.d/munin restart
+    lxc exec $monitor_container_name -- service apache2 reload
   fi
-  sudo service munin-node restart
-
-  lxc exec $monitor_container_name -- /etc/init.d/munin restart
-  lxc exec $monitor_container_name -- service apache2 reload
 fi
