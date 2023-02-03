@@ -1,0 +1,32 @@
+{
+    "description": "Pipeline to parse message field into json",
+    "processors": [
+        {
+            "json": {
+                "field": "message",
+                "target_field": "message_json",
+                "ignore_failure": true
+            }
+        },
+        {
+            "grok": {
+                "field": "message",
+                "patterns": [
+                    "%{WORD:auth_what}%{SPACE}%{WORD:auth_event}%{SPACE}%{WORD:auth_type}%{SPACE}%{WORD:auth_sr}%{SPACE}%{WORD:auth_username}%{SPACE}%{WORD:auth_i}%{SPACE}%{IP:auth_ip}%{SPACE}%{WORD:auth_wt}%{SPACE}%{WORD:auth_session_id}%{SPACE}%{GREEDYDATA:auth_message}"
+                ],
+                "ignore_missing": true,
+                "ignore_failure": true
+            }
+        },
+        {
+            "grok": {
+                "field": "message",
+                "patterns": [
+                    "%{DATA:auth_what}:%{SPACE}%{WORD:auth_type};%{SPACE}%{WORD:auth_sr}:%{SPACE}%{WORD:auth_username};%{SPACE}%{WORD:auth_i}:%{SPACE}%{IP:auth_ip};%{SPACE}%{WORD:auth_wt}:%{SPACE}%{WORD:auth_session_id};%{GREEDYDATA:auth_message}"
+                ],
+                "ignore_missing": true,
+                "ignore_failure": true
+            }
+        }
+    ]
+}

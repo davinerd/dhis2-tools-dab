@@ -1,0 +1,65 @@
+{
+    "consumer": "alerts",
+    "tags": [
+        "dhis2"
+    ],
+    "name": "failed login attempts",
+    "enabled": true,
+    "throttle": null,
+    "schedule": {
+        "interval": "1m"
+    },
+    "params": {
+        "timeSize": 5,
+        "timeUnit": "m",
+        "count": {
+            "value": 3,
+            "comparator": "more than or equals"
+        },
+        "criteria": [
+            {
+                "field": "auth_type",
+                "comparator": "equals",
+                "value": "AuthenticationFailureBadCredentialsEvent"
+            }
+        ],
+        "groupBy": [
+            "auth_username"
+        ]
+    },
+    "rule_type_id": "logs.alert.document.count",
+    "notify_when": "onActionGroupChange",
+    "actions": [
+        {
+            "group": "logs.threshold.fired",
+            "id": "CONNECTOR_ID",
+            "params": {
+                "documents": [
+                    {
+                        "@timestamp": "{{context.timestamp}}",
+                        "tags": "{{rule.tags}}",
+                        "rule": {
+                            "id": "{{rule.id}}",
+                            "name": "{{rule.name}}",
+                            "space": "{{rule.spaceId}}",
+                            "type": "{{rule.type}}"
+                        },
+                        "kibana": {
+                            "alert": {
+                                "user": "{{alert.id}}",
+                                "context": {
+                                    "url": "{{context.viewInAppUrl}}",
+                                    "conditions": "{{context.conditions}}",
+                                    "reason": "{{context.reason}}"
+                                }
+                            }
+                        },
+                        "event": {
+                            "kind": "alert"
+                        }
+                    }
+                ]
+            }
+        }
+    ]
+}

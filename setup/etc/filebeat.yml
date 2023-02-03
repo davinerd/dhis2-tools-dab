@@ -152,6 +152,7 @@ output.elasticsearch:
   username: "elastic"
   password: "changeme"
 
+  pipeline: message_to_json
 # ------------------------------ Logstash Output -------------------------------
 #output.logstash:
   # The Logstash hosts
