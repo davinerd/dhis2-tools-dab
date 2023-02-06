@@ -3,9 +3,6 @@
 # Include useful functions
 source libs.sh
 
-# Parse json config file
-source parse_config.sh
-
 # ufw status
 UFW_STATUS=$(sudo ufw status |grep Status|cut -d ' ' -f 2)
 
