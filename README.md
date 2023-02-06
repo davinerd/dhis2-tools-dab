@@ -243,3 +243,12 @@ dab@battlechine:~/dhis2-tools-dab/setup$ lxc list
 | proxy    | RUNNING | 192.168.0.2 (eth0)  |      | CONTAINER | 0         | battlechine  |
 +----------+---------+---------------------+------+-----------+-----------+--------------+
 ```
+
+## Extend
+If you want to add support to other type of containers like a different SIEM or a different monitoring system, you can do so by following the steps below:
+
+1. Create two files in `containers` directory: one named with the new service you're implementing, and the second one with the `_postsetup` suffix. Format is `<name of the service>_<type of the service>`. For example, to implement a different SIEM like [OpenSearch](https://opensearch.org/), you would create the files `opensearch_siem` and `opensearch_siem_postsetup`.
+2. Write the install and basic configuration steps in the main file and additional configuration steps in the postsetup script.
+3. Add the relevant section in the `containers.json` file. The minimum fields you must include are `name`, `ip` and `type`. As `type`, you have to use the name of the main service file.
+
+These are the minimum steps. You may want to add additional features in other scripts under `service` or add new ones to enrich and implement your service.
