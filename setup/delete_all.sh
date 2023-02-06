@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
 
-source parse_config.sh
-
 source libs.sh
 
-echo "Are you really sure you want to delete all containers"
+log_warn "Are you really sure you want to delete all containers"
 select yn in "Yes" "No"; do
     case $yn in
         Yes ) break;;
@@ -12,10 +10,11 @@ select yn in "Yes" "No"; do
     esac
 done
 
-#Remove all credentials
-remove_creds "_all_"
-
 for c in $(lxc list --format csv -c n); do 
-	echo "Deleting $c"
+	log_info "Deleting $c"
 	lxc delete --force $c
 done
+
+#Remove all credentials
+log_info "Removing all credentials"
+remove_creds "_all_"
