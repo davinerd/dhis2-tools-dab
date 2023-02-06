@@ -115,13 +115,6 @@ for CONTAINER in $CONTAINERS; do
   log_info "Running setup from containers/$TYPE"
   cat containers/$TYPE | lxc exec $NAME -- bash
 
-  if [[ $MONITORING == munin ]] && [[ $TYPE != munin_monitor ]]; then
-	lxc exec $NAME -- apt-get install -y munin-node
-  lxc exec $NAME -- sed -i -e "\$acidr_allow $MUNIN_IP/32\n" /etc/munin/munin-node.conf
-	lxc exec $NAME -- ufw allow proto tcp from $MUNIN_IP to any port 4949
-	lxc exec $NAME -- service munin-node restart
-  fi
-
   # source any post setup scripts
   if [[ -f containers/${TYPE}_postsetup ]]; then
     source containers/${TYPE}_postsetup
@@ -132,8 +125,9 @@ done
 if [[ $MONITORING == munin ]]; then
   #monitor_container_name=$(jq '.containers[] | select(.type | contains("monitor")) |.name' /usr/local/etc/dhis/containers.json | tr -d '"')
   monitor_container_name=$(echo $CONTAINERS | jq '. | select(.type | contains("monitor")) |.name' | tr -d '"')
-  if ! [[ "$monitor_container_name" =~ $(lxc list -c n,s -f csv | grep -i running) ]]; then
-    log_warn "Monitor container not running. Skipping"
+  running_containers=$(lxc list -c n,s -f csv | grep -i running)
+  if [[ -z "$monitor_container_name" ]] || [[ -e  "${running_containers##*$monitor_container_name*}" ]]; then
+    log_warn "Monitor container not existing or running. Skipping"
   else
     log_info "Adding containers to monitor..."
     for CONTAINER in $CONTAINERS; do
@@ -142,6 +136,15 @@ if [[ $MONITORING == munin ]]; then
       TYPE=$(echo $CONTAINER | jq -r .type)
 
       if [[ $TYPE != munin_monitor ]]; then
+        log_info "Installing munin into container '$NAME'"
+        lxc exec $NAME -- apt-get install -y munin-node
+        munin_conf_ip=$(lxc exec $NAME -- grep "$MUNIN_IP" /etc/munin/munin-node.conf)
+        if [ -z "$munin_conf_ip" ]; then
+          lxc exec $NAME -- sed -i -e "\$acidr_allow $MUNIN_IP/32\n" /etc/munin/munin-node.conf
+        fi
+        lxc exec $NAME -- ufw allow proto tcp from $MUNIN_IP to any port 4949
+        lxc exec $NAME -- service munin-node restart
+
         # avoid adding two times the same container
         monitored=$(lxc exec $monitor_container_name -- grep "$NAME" /etc/munin/munin.conf)
         if  [ -z "$monitored" ]; then
