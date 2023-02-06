@@ -83,43 +83,42 @@ done
 log_info "Configuring Kibana proxy access"
 PROXY_CONTAINER=$(echo $CONTAINERS | jq '. | select(.type | contains("proxy")) |.name' | tr -d '"')
 
-if [[ $PROXY == "nginx" ]]; then
+if [[ $PROXY == "nginx" ]] || [[ $PROXY == "apache2" ]]; then
+  if [[ $PROXY == "nginx" ]]; then
+    cat <<EOF > /tmp/${NAME}.conf
+      # Proxy pass to servlet container
 
-  cat <<EOF > /tmp/${NAME}.conf
-    # Proxy pass to servlet container
-
-    location /${NAME} {
-      proxy_pass                http://${IP}:5601;
-      include                   /etc/nginx/proxy_params;
-   }
+      location /${NAME} {
+        proxy_pass                http://${IP}:5601;
+        include                   /etc/nginx/proxy_params;
+    }
 EOF
+
   lxc file push /tmp/${NAME}.conf ${PROXY_CONTAINER}/etc/nginx/upstream/${NAME}.conf
   rm /tmp/${NAME}.conf
-
   lxc exec ${PROXY_CONTAINER} -- service nginx restart
 
-elif [[ $PROXY == "apache2" ]]; then
-#if proxy is apache2 ;
-  cat <<EOF > /tmp/${NAME}
-  <Location /${NAME}>
-    Require all granted
-    ProxyPass "http://${IP}:5601"
-    ProxyPassReverse "http://${IP}:5601"
-  </Location>
+  elif [[ $PROXY == "apache2" ]]; then
+    cat <<EOF > /tmp/${NAME}
+    <Location /${NAME}>
+      Require all granted
+      ProxyPass "http://${IP}:5601"
+      ProxyPassReverse "http://${IP}:5601"
+    </Location>
 EOF
 
-  lxc file push /tmp/${NAME} ${PROXY_CONTAINER}/etc/apache2/upstream/${NAME}
-  rm /tmp/${NAME}
+    lxc file push /tmp/${NAME} ${PROXY_CONTAINER}/etc/apache2/upstream/${NAME}
+    rm /tmp/${NAME}
+    lxc exec ${PROXY_CONTAINER} -- service apache2 restart
+  fi
 
-  lxc exec ${PROXY_CONTAINER} -- service apache2 restart
+  lxc exec $NAME -- sh -c "echo \"server.basePath: \"/${NAME}\"\" >> /etc/kibana/kibana.yml"
+  lxc exec $NAME -- sh -c "echo 'server.rewriteBasePath: true'  >> /etc/kibana/kibana.yml"
+  lxc exec $NAME -- sh -c "echo \"server.publicBaseUrl: \"https://${FQDN}/${NAME}\"\" >> /etc/kibana/kibana.yml"
+  lxc exec $NAME -- service kibana restart
+
 else
   log_warn "Proxy type '$PROXY' not supported. SIEM not configured for proxy access"
 fi
-
-lxc exec $NAME -- sh -c "echo \"server.basePath: \"/${NAME}\"\" >> /etc/kibana/kibana.yml"
-lxc exec $NAME -- sh -c "echo \"server.publicBaseUrl: \"https://${FQDN}/${NAME}\"\" >> /etc/kibana/kibana.yml"
-lxc exec $NAME -- sh -c "echo 'server.rewriteBasePath: true'  >> /etc/kibana/kibana.yml"
-
-lxc exec $NAME -- service kibana restart
 
 log_info "Done configuring SIEM"
