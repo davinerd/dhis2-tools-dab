@@ -57,11 +57,11 @@ rm -rf $tmp_preseed
 # kernel tweaks
 cat configs/sysctl >> /etc/sysctl.conf
 
-ufw allow in on lxdbr0
-ufw allow out on lxdbr0
+ufw allow in on $LXDBR
+ufw allow out on $LXDBR
 
-ufw route allow in on lxdbr0
-ufw route allow out on lxdbr0
+ufw route allow in on $LXDBR
+ufw route allow out on $LXDBR
 
 source install_scripts.sh
 
