@@ -1,0 +1,66 @@
+{
+  "consumer": "alerts",
+  "tags": [
+    "dhis2"
+  ],
+  "name": "superuser edit activity",
+  "enabled": true,
+  "throttle": null,
+  "schedule": {
+    "interval": "1m"
+  },
+  "params": {
+    "timeSize": 1,
+    "timeUnit": "m",
+    "count": {
+      "value": 1,
+      "comparator": "more than or equals"
+    },
+    "criteria": [
+      {
+        "field": "message_json.data.userRoles",
+        "comparator": "equals",
+        "value": "yrB6vc5Ip3r"
+      }
+    ],
+    "groupBy": [
+      "message_json.data.username"
+    ]
+  },
+  "rule_type_id": "logs.alert.document.count",
+  "notify_when": "onActionGroupChange",
+  "actions": [
+    {
+      "group": "logs.threshold.fired",
+      "id": "CONNECTOR_ID",
+      "params": {
+        "documents": [
+          {
+            "@timestamp": "{{context.timestamp}}",
+            "tags": "{{rule.tags}}",
+            "rule": {
+              "id": "{{rule.id}}",
+              "name": "{{rule.name}}",
+              "space": "{{rule.spaceId}}",
+              "type": "{{rule.type}}"
+            },
+            "kibana": {
+              "alert": {
+                "user": "{{alert.id}}",
+                "context": {
+                  "url": "{{context.viewInAppUrl}}",
+                  "conditions": "{{context.conditions}}",
+                  "reason": "{{context.reason}}"
+                },
+                "message": "The superuser {{alert.id}} has been created/modified"
+              }
+            },
+            "event": {
+              "kind": "alert"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

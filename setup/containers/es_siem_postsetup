@@ -44,6 +44,13 @@ if [[ $(jq -r 'has("statusCode")' <<< $ack) == "true" ]]; then
   log_warn "Failed to create failed login alert rule: $ack"
 fi
 
+lxc exec $NAME -- sed -i "s/CONNECTOR_ID/$connector_id/" /root/es_siem/alert_rules/superuser_changes.json
+# create rule
+ack=$(lxc exec $NAME -- sh -c "curl -XPOST -u \"elastic:${ES_USER_PWD}\" http://${IP}:5601/api/alerting/rule -d @/root/es_siem/alert_rules/superuser_changes.json -H 'Content-Type:application/json' -H 'kbn-xsrf: true' -s")
+if [[ $(jq -r 'has("statusCode")' <<< $ack) == "true" ]]; then
+  log_warn "Failed to create superuser changes alert rule: $ack"
+fi
+
 # create global datav iew
 ack=$(lxc exec $NAME -- sh -c "curl -XPOST -u \"elastic:${ES_USER_PWD}\" http://${IP}:5601/api/data_views/data_view -d @/root/es_siem/data_views/es_default_data_view.json -H 'Content-Type:application/json' -H 'kbn-xsrf: true' -s")
 if [[ $(jq -r 'has("statusCode")' <<< $ack) == "true" ]]; then
