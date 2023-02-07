@@ -34,6 +34,7 @@ if [[ $(jq -r 'has("statusCode")' <<< $ack) == "true" ]]; then
 fi
 
 connector_id=$(lxc exec $NAME -- sh -c "curl -u \"elastic:${ES_USER_PWD}\" http://${IP}:5601/api/actions/connectors -H 'kbn-xsrf: true'  -s" | jq -r .[].id)
+lxc exec $NAME -- sed -i "s/CONNECTOR_ID/$connector_id/" /root/es_siem/alert_rules/failed_logins.json
 # create rule
 ack=$(lxc exec $NAME -- sh -c "curl -XPOST -u \"elastic:${ES_USER_PWD}\" http://${IP}:5601/api/alerting/rule -d @/root/es_siem/alert_rules/failed_logins.json -H 'Content-Type:application/json' -H 'kbn-xsrf: true' -s")
 if [[ $(jq -r 'has("statusCode")' <<< $ack) == "true" ]]; then
