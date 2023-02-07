@@ -39,9 +39,10 @@ systemctl enable --now elasticsearch
 #systemctl restart elasticsearch
 
 elastic_new_passwd=$(/usr/share/elasticsearch/bin/elasticsearch-reset-password -u elastic -s -b)
-echo "New password elastic user: $elastic_new_passwd"
 echo "$elastic_new_passwd" > .es_elastic_passwd
 es_http_status=$(curl --cacert /etc/elasticsearch/certs/http_ca.crt -u "elastic:$elastic_new_passwd" -s -o /dev/null -w "%{http_code}" https://localhost:9200)
+
+elastic_new_passwd=""
 
 if [ $es_http_status -ne 200 ]; then
   echo "[X] Elasticsearch returned $es_http_status. Please troubleshoot the issue. Exiting [X]"
