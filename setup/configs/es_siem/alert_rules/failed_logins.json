@@ -51,7 +51,8 @@
                                     "url": "{{context.viewInAppUrl}}",
                                     "conditions": "{{context.conditions}}",
                                     "reason": "{{context.reason}}"
-                                }
+                                },
+                                "message": "The user {{alert.id}} has failed {{context.reason}}"
                             }
                         },
                         "event": {
