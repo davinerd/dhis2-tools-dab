@@ -4,6 +4,9 @@ lxc exec $NAME -- rm -rf .es_elastic_passwd
 creds_str='{"service":"elasticsearch","username":"elastic","password":"'${ES_USER_PWD}'"}'
 save_creds $creds_str
 
+log_info "Waiting for Kibana to be up&running"
+lxc exec $NAME -- su -c "while ! nc -q 1 ${IP} 5601 </dev/null; do sleep 10; done"
+
 log_info "Configuring Elasticsearch and Kibana"
 lxc file push configs/es_siem/ $NAME/root/ -r
 
