@@ -59,15 +59,32 @@ else
   log_info "Filebeat already installed"
 fi
 
-log_info "Configuring filebeat"
-lxc file push ./etc/filebeat.yml ${container_name}/etc/filebeat/
-lxc exec $container_name -- chown root.root /etc/filebeat/filebeat.yml
-lxc exec $container_name -- chmod go-w /etc/filebeat/filebeat.yml
+siem_container=$(echo $CONTAINERS | jq -r '. | select(.type|test("siem")).name')
+if [[ -z "$siem_container" ]]; then
+  log_warn "SIEM container cannot be found in the containers.json file. Skipping configuration"
+elif [[ $(lxc list -c n,s -f csv | grep -i running) =~ "$siem_container" ]]; then
+  log_info "Configuring filebeat"
+  tmp_dir=$(mktemp -d)
+  lxc exec $container_name -- mkdir /etc/filebeat/certs &> /dev/null
 
-lxc exec $container_name -- sed -i -e "s/ES_HOST/$IPREGEX/" /etc/filebeat/filebeat.yml
-lxc exec $container_name -- sed -i -e "s/changeme/$ES_USER_PWD/" /etc/filebeat/filebeat.yml
-lxc exec $container_name -- sed -i -e "s/LOCAL_HOST/$container_name/" /etc/filebeat/filebeat.yml
+  lxc file push ./etc/filebeat.yml ${container_name}/etc/filebeat/
+  lxc file pull $siem_container/etc/elasticsearch/certs/http_ca.crt "${tmp_dir}/"
+  lxc file push "${tmp_dir}/http_ca.crt" $container_name/etc/filebeat/certs/
+  rm -rf ${tmp_dir}
 
-lxc exec $container_name -- systemctl enable --now filebeat
-lxc exec $container_name -- service filebeat restart
-log_info "Filebeat configured. All good"
+  ssl_ca_fingerprint=$(lxc exec $container_name -- sh -c "openssl x509 -fingerprint -sha256 -noout -in /etc/filebeat/certs/http_ca.crt | sed 's/://g' | cut -d '=' -f2")
+
+  lxc exec $container_name -- chown root.root /etc/filebeat/filebeat.yml
+  lxc exec $container_name -- chmod go-w /etc/filebeat/filebeat.yml
+
+  lxc exec $container_name -- sed -i -e "s/ES_HOST/$IPREGEX/" /etc/filebeat/filebeat.yml
+  lxc exec $container_name -- sed -i -e "s/changeme/$ES_USER_PWD/" /etc/filebeat/filebeat.yml
+  lxc exec $container_name -- sed -i -e "s/LOCAL_HOST/$container_name/" /etc/filebeat/filebeat.yml
+  lxc exec $container_name -- sed -i -e "s/SSL_CA_FINGERPRINT/$ssl_ca_fingerprint/" /etc/filebeat/filebeat.yml
+
+  lxc exec $container_name -- systemctl enable --now filebeat
+  lxc exec $container_name -- service filebeat restart
+  log_info "Filebeat configured. All good"
+else
+  log_warn "SIEM container '$siem_container' not running. Skipping filebeat configuration"
+fi
