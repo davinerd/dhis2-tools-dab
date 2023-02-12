@@ -4,7 +4,7 @@ CONFIG=$(cat /usr/local/etc/dhis/containers.json)
 DHIS2_CONFIG_DIR="/usr/local/etc/dhis"
 DHIS2_BIN_DIR="/usr/local/bin"
 
-CLUSTER_ENABLED=true
+CLUSTER_ENABLED=false
 LXD_VERSION="5.0/stable"
 
 # Abort script on errors

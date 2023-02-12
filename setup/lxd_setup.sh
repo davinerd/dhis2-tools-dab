@@ -9,7 +9,7 @@ if [ $UID -ne 0 ]; then
 fi
 
 NETREGEX=$(echo $NETWORK | sed 's/\//\\\//g')
-PRESEED_FILE="configs/lxd_preseed_cluster"
+PRESEED_FILE="configs/lxd_preseed"
 
 log_info "Updating local machine"
 apt-get -y update
@@ -25,6 +25,7 @@ fi
 
 # initializing lxd system
 if [ $CLUSTER_ENABLED = true ]; then
+    PRESEED_FILE="configs/lxd_preseed_cluster"
     local_ifaces=$(ip -br l | awk '$1 !~ "lo" && $2 == "UP" { print $1}')
 
     echo "Which interface you want the cluster to listen to?"
@@ -35,8 +36,6 @@ if [ $CLUSTER_ENABLED = true ]; then
         ufw allow in on $yn to any port 8443
         break
     done
-else
-    PRESEED_FILE="configs/lxd_preseed"
 fi
 
 tmp_preseed=$(mktemp)
