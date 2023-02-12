@@ -9,9 +9,7 @@ if [ $UID -ne 0 ]; then
 fi
 
 NETREGEX=$(echo $NETWORK | sed 's/\//\\\//g')
-CLUSTER_ENABLED=true
 PRESEED_FILE="configs/lxd_preseed_cluster"
-LXD_VERSION="5.0/stable"
 
 log_info "Updating local machine"
 apt-get -y update
