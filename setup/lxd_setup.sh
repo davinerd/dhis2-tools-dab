@@ -4,7 +4,7 @@
 source libs.sh
 
 if [ $UID -ne 0 ]; then
-    echo "You must run this script as root. Quitting"
+    log_error "You must run this script as root. Quitting"
     exit 1
 fi
 
@@ -25,6 +25,7 @@ fi
 
 # initializing lxd system
 if [ $CLUSTER_ENABLED = true ]; then
+    log_info "Enabling lxd cluster mode"
     PRESEED_FILE="configs/lxd_preseed_cluster"
     local_ifaces=$(ip -br l | awk '$1 !~ "lo" && $2 == "UP" { print $1}')
 
@@ -32,7 +33,7 @@ if [ $CLUSTER_ENABLED = true ]; then
     ifaces=($local_ifaces)
     select yn in ${ifaces[@]}; do
         LOCAL_IP=$(ip address show $yn | egrep -o 'inet [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | cut -d' ' -f2)
-        echo "Using $yn - $LOCAL_IP"
+        log_info "Using $yn - $LOCAL_IP"
         ufw allow in on $yn to any port 8443
         break
     done
