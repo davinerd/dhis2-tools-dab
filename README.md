@@ -244,6 +244,16 @@ dab@battlechine:~/dhis2-tools-dab/setup$ lxc list
 +----------+---------+---------------------+------+-----------+-----------+--------------+
 ```
 
+## Limitations
+This software has been tested with a limited set of data and resources.
+
+Specifically, it was tested against the official DHIS2 databases, which lack several type of data like metadata.
+Also, audit data has been produced limited to basic processes like user management and authentication.
+
+The system has been tested on laptops and workstations, using mostly virtualization and paravirtualization environments (i.e. VMWare and VirtualBox), with limited storage capacity.
+
+All SIEM rules must be thoroughly tested to ensure correctness.
+
 ## Extend
 If you want to add support to other type of containers like a different SIEM or a different monitoring system, you can do so by following the steps below:
 
@@ -252,3 +262,5 @@ If you want to add support to other type of containers like a different SIEM or 
 3. Add the relevant section in the `containers.json` file. The minimum fields you must include are `name`, `ip` and `type`. As `type`, you have to use the name of the main service file.
 
 These are the minimum steps. You may want to add additional features in other scripts under `service` or add new ones to enrich and implement your service.
+
+## How to contribute

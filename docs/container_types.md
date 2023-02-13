@@ -125,6 +125,16 @@ It does so with the help of [filebeat](https://www.elastic.co/beats/filebeat), w
 
 The container type installs elasticsearch, logstash and kibana from the official Elastic repository. The postsetup script configures journal and filebeat in every running container (thanks to [`dhis2-set-elasticsearch` script](./service_scripts.md#dhis2-set-elasticsearch)).
 
+Additional configuration files can be found in `setup/configs/es_siem`. Files are divided in directories based on their function, and executed in the postsetup script.
+
+#### Built in configuration
+By default, the `es_siem_postsetup` script configures:
+* an ingest pipeline to parse the `message` field into JSON object
+* a data view for the default index
+* an index to collect alerts
+* a data view for the alert index
+* alert rules
+
 #### Examples
 ```
 {
