@@ -5,7 +5,6 @@ networks:
     ipv4.nat: "true"
     ipv6.address: none
   description: ""
-  managed: false
   name: lxdbr0
   type: ""
 storage_pools:
