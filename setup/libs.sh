@@ -29,12 +29,12 @@ function save_creds {
   local service=$(jq .service <<< $creds | tr -d '"')
 
   # remove old service creds
-  jq --arg srvc $service 'del(.credentials[] | select(.service == $srvc))' $CREDENTIALS_FILE > $tmpfile
+  sudo jq --arg srvc $service 'del(.credentials[] | select(.service == $srvc))' $CREDENTIALS_FILE > $tmpfile
 
   # because of https://github.com/stedolan/jq/issues/105
   echo "$(jq --argjson jstr $creds '.credentials += [$jstr]' $tmpfile)" > $tmpfile || rm -rf $tmpfile && return 1
 
-  mv -f $tmpfile $CREDENTIALS_FILE
+  sudo mv -f $tmpfile $CREDENTIALS_FILE
 }
 
 function remove_creds {
