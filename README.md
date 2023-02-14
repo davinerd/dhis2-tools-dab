@@ -255,3 +255,7 @@ If you want to add support to other type of containers like a different SIEM or 
 These are the minimum steps. You may want to add additional features in other scripts under `service` or add new ones to enrich and implement your service.
 
 ## How to contribute
+There are many ways you can contribute to this project:
+- By opening an issue on Github specifying your use case or issue and adding the appropriate label
+- By commenting or upvoting current open issues so we know where we should focus our work
+- By forking and submitting a PR to this repository
