@@ -32,7 +32,7 @@ function save_creds {
   jq --arg srvc $service 'del(.credentials[] | select(.service == $srvc))' $CREDENTIALS_FILE > $tmpfile
 
   # because of https://github.com/stedolan/jq/issues/105
-  echo "$(jq --argjson jstr $creds '.credentials += [$jstr]' $tmpfile)" > $tmpfile
+  echo "$(jq --argjson jstr $creds '.credentials += [$jstr]' $tmpfile)" > $tmpfile || rm -rf $tmpfile && return 1
 
   mv -f $tmpfile $CREDENTIALS_FILE
 }
