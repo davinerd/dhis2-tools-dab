@@ -28,6 +28,12 @@ function save_creds {
   local tmpfile="$(mktemp)" || exit 1
   local service=$(jq .service <<< $creds | tr -d '"')
 
+  if [ -z "$service" ]; then
+    rm -rf $tmpfile
+    creds=""
+    return 1
+  fi
+
   # remove old service creds
   sudo jq --arg srvc $service 'del(.credentials[] | select(.service == $srvc))' $CREDENTIALS_FILE > $tmpfile
 
