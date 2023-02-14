@@ -93,6 +93,8 @@ In the [libs.sh](../setup/libs.sh) file there are three functions to manage cred
 
 `dhis2-set-credentials` can be used within script and postsetup scripts as well, or manually from shell to change/rotate credentials, even as a part of a cron job.
 
+Please note: when changing DHIS2 admin credentials via the `dhis2-admin` service, **currently active admin sessions are not invalidated**. If you want to invalidate when the password is changed, please set the variable `INVALIDATE_ADMIN_SESSION` to `true` before running the script.
+
 ### Example
 Usage:
 ```
@@ -100,9 +102,10 @@ $ dhis2-set-credential
 Set credential for services.
 
 usage: dhis2-set-credential <SERVICE> <CONTAINER_NAME> [<credentials>]
-  Valid services are: munin glowroot elasticsearch
+  Valid services are: munin glowroot elasticsearch dhis2-admin
 Options:
-credentials   JSON string containing the credentials in form: {'username':'user', 'password':'password'}
+credentials   JSON string containing the credentials in form: '{"service":"service name","username":"user","password":"password"}'
+              The JSON string must be formatted exactly as shown above (not have spaces around colons and semicolons, proper use of quotes).
 ```
 
 Changing password for `glowroot` manually:
@@ -165,6 +168,26 @@ Option \#2:
 $ source libs.sh
 $ get_creds "munin"
 { "service": "munin", "username": "admin", "password": "638f70dabb638aed8edb0d65" }
+```
+
+To change DHIS2 admin password for a container named `testdev`:
+```
+$ sudo dhis2-set-credential dhis2-admin testdev
+[2023-02-14 14:00:18] [INFO] [dhis2-set-credential] Service dhis2-admin found. Setting credentials
+==============================
+Do you want to add the password manually for the user admin in the service dhis2-admin? (If not, password will be generated randomly)
+1) Yes
+2) No
+#? 2
+{"httpStatus":"OK","httpStatusCode":200,"status":"OK","response":{"responseType":"ImportReport","status":"OK","stats":{"created":0,"updated":1,"deleted":0,"ignored":0,"total":1},"typeReports":[{"klass":"org.hisp.dhis.user.User","stats":{"created":0,"updated":1,"deleted":0,"ignored":0,"total":1},"objectReports":[{"klass":"org.hisp.dhis.user.User","index":0,"uid":"M5zQapPyTZI","errorReports":[]}]}]}}
+
+Credentials have been set:
+=========================
+Instance: testdev
+Service: testdev-dhis2-admin
+Username: admin
+Password: 6fT8#t{tJ=D<oG*!>8ve7J%x
+$
 ```
 
 ## dhis2-set-journal
