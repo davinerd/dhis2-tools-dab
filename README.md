@@ -58,35 +58,26 @@ dab@battlechine:~/dhis2-tools-dab/setup$ sudo ./lxd_setup.sh
 This will:
 - Update LXD from version 4.0 to version 5.0 stable
 - Install the new scripts (under `/usr/local/bin`)
-- Ask you what interface the cluster should be available on. Select the interface which communicates with external systems/public internet
-- Reconfigure LXD in cluster mode
+- Check for missing containers specified in `/usr/local/etc/dhis/containers.json`
 
 3. Verify everything works as expected
 ```
 dab@battlechine:~/dhis2-tools-dab/setup$ lxc list
-+----------+---------+---------------------+------+-----------+-----------+-------------+
-|   NAME   |  STATE  |        IPV4         | IPV6 |   TYPE    | SNAPSHOTS |  LOCATION   |
-+----------+---------+---------------------+------+-----------+-----------+-------------+
-| monitor  | RUNNING | 192.168.0.30 (eth0) |      | CONTAINER | 0         | battlechine |
-+----------+---------+---------------------+------+-----------+-----------+-------------+
-| postgres | RUNNING | 192.168.0.20 (eth0) |      | CONTAINER | 0         | battlechine |
-+----------+---------+---------------------+------+-----------+-----------+-------------+
-| proxy    | RUNNING | 192.168.0.2 (eth0)  |      | CONTAINER | 0         | battlechine |
-+----------+---------+---------------------+------+-----------+-----------+-------------+
-
-dab@battlechine:~/dhis2-tools-dab/setup$ lxc cluster list
-+-------------+---------------------------+-----------------+--------------+----------------+-------------+--------+-------------------+
-|    NAME     |            URL            |      ROLES      | ARCHITECTURE | FAILURE DOMAIN | DESCRIPTION | STATE  |      MESSAGE      |
-+-------------+---------------------------+-----------------+--------------+----------------+-------------+--------+-------------------+
-| battlechine | https://192.168.1.68:8443 | database-leader | x86_64       | default        |             | ONLINE | Fully operational |
-|             |                           | database        |              |                |             |        |                   |
-+-------------+---------------------------+-----------------+--------------+----------------+-------------+--------+-------------------+
++----------+---------+---------------------+------+-----------+-----------+
+|   NAME   |  STATE  |        IPV4         | IPV6 |   TYPE    | SNAPSHOTS |
++----------+---------+---------------------+------+-----------+-----------+
+| monitor  | RUNNING | 192.168.0.30 (eth0) |      | CONTAINER | 0         |
++----------+---------+---------------------+------+-----------+-----------+
+| postgres | RUNNING | 192.168.0.20 (eth0) |      | CONTAINER | 0         |
++----------+---------+---------------------+------+-----------+-----------+
+| proxy    | RUNNING | 192.168.0.2 (eth0)  |      | CONTAINER | 0         |
++----------+---------+---------------------+------+-----------+-----------+
 ```
 
 ## Notes
-If you wish not to use LXD cluster mode, set the `CLUSTER_ENABLED` variable to `false` in [lxd_setup.sh](./setup/lxd_setup.sh).
+If you wish to use LXD cluster mode, set the `CLUSTER_ENABLED` variable to `true` in [parse_config.sh](./setup/parse_config.sh).
 
-If you wish to stay with LXD version 4.0, set the `LXD_VERSION` variable to `4.0/stable` in [lxd_setup.sh](./setup/lxd_setup.sh).
+If you wish to stay with LXD version 4.0, set the `LXD_VERSION` variable to `4.0/stable` in [parse_config.sh](./setup/parse_config.sh).
 
 When cluster is enabled and containers don't have a `remote_host` key specified, lxd automatically creates the container on the machine with more resources available.
 You will need to specify the `remote_host` key for all containers if you want to force the creation on a specific host.
