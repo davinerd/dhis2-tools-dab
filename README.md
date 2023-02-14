@@ -41,7 +41,7 @@ You can do this safely. No downtime should occur. However, we suggest to test it
 
 We also suggest to backup containers in case something goes wrong.
 
-A full upgrade guide has been described [in this blog post](https://medium.com/@dabsolutions).
+An upgrade guide has been described [in this blog post](https://medium.com/@dabsolutions/how-to-upgrade-to-dhis2-tools-dab-d6115acb4265).
 
 Here are the steps to perform the upgrade:
 
