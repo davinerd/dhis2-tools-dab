@@ -37,7 +37,7 @@ Feel free to read how to install it and what is required to do so by reading the
 ## Upgrade
 Most of the users have already configured dhis2-tools-ng and most likely want to upgrade to dhis2-tools-dab.
 
-You can do this safely. A small downtime will occur, which shouldn't be noticeable. However, we suggest to test it in a testing environment before upgrading production systems.
+You can do this safely. No downtime should occur. However, we suggest to test it in a testing environment before upgrading production systems.
 
 We also suggest to backup containers in case something goes wrong.
 
