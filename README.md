@@ -9,9 +9,9 @@ This version includes, on top of the original tool's features:
 - Improved credentials storage and retrieval (consistency and security)
 - More robust setup for increased flexibility and customization (reduced hardcoded values)
 - Possibility to specify different ubuntu versions for each container (in `containers.json` or via `dhis2-create-instance`)
-- LXD cluster support (enabled by default in `lxd_setup.sh`)
+- LXD cluster support (disabled by default in `parse_config.sh`)
 - Upgraded LXD from 4.0 to 5.0
-- Compliant with CIS Benchmarks (supported: `tomcat9`). Checked with [dhis2-inspec](https://github.com/daviner/dhis2-inspec).
+- Compliant with CIS Benchmarks (supported: `tomcat9`). Checked with [dhis2-inspec](https://github.com/davinerd/dhis2-inspec).
 - Automatic rotate built-in default admin account password (thanks to [`dhis2-set-credentials`](./docs/service_scripts.md#dhis2-set-credential)).
 
 New container types have been added:
