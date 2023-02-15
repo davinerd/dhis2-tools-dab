@@ -70,7 +70,7 @@ OS_VERSION=${OS_VERSION:-${GUESTOS_VERSION}}
 IPREGEX=$(echo $IP |sed "s/\./\\\./g")
 
 # check Container name is available
-if [[ $(lxc list -c n --format csv | grep -w $NAME) ]]; then
+if [[ $(lxc list -c n --format csv | grep -x $NAME) ]]; then
   log_error "Container $NAME already exists"
   exit 1  
 fi
@@ -83,7 +83,7 @@ fi
 
 if [ $CREATEDB ]; then
   # Check if Postgres container exists
-  if [ ! $(lxc list -c n --format csv | grep -w $PG) ]; then
+  if [ ! $(lxc list -c n --format csv | grep -x $PG) ]; then
     log_error "No such container $PG"
     exit 1
   fi
