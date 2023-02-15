@@ -25,7 +25,15 @@ usage() {
 
 [ -z "${BACKUPFILE}"  ] || [ -z "${DB}" ] && usage && exit 1
 
+if [ ! $(lxc list -c n --format csv | grep -x $DB) ]; then
+  echo "Error: No such container named '$DB'"
+  exit 1
+fi
 
+if [ ! $(lxc list -c n --format csv | grep -x $PG) ]; then
+  echo "Error: No such container named '$PG'"
+  exit 1
+fi
 
 if [ `lxc exec "$DB" -- systemctl is-active tomcat9` = "active" ]; then
   echo "Cannot restore database while tomcat is running."
