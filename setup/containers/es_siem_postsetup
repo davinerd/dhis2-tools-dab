@@ -4,11 +4,13 @@ lxc exec $NAME -- rm -rf .es_elastic_passwd
 creds_str='{"service":"elasticsearch","username":"elastic","password":"'${ES_USER_PWD}'"}'
 save_creds $creds_str
 
-log_info "Waiting for Kibana to be up&running"
-lxc exec $NAME -- su -c "while ! nc -q 1 ${IP} 5601 </dev/null; do sleep 10; done"
-
 log_info "Configuring Elasticsearch and Kibana"
 lxc file push configs/es_siem/ $NAME/root/ -r
+
+while [[ $(lxc exec $NAME -- sh -c "curl -s -u \"elastic:${ES_USER_PWD}\" -k http://${IP}:5601/api/status" | jq -r .status.overall.level) != "available" ]]; do
+  log_info "Waiting for Kibana to be up&running (sleep 10s)"
+  sleep 10
+done
 
 # create pipeline
 ack=$(lxc exec $NAME -- sh -c "curl -XPUT -u \"elastic:${ES_USER_PWD}\" -k -H 'Content-Type:application/json' https://localhost:9200/_ingest/pipeline/message_to_json -d @/root/es_siem/ingest_pipelines/es_ingest_pipeline.json -s")
