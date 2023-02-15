@@ -12,11 +12,13 @@ set -e
 PROG=$(basename "$0")
 BACKUPFILE="$1"
 DB="$2"
+PG=${3:-postgres}
 
 usage() {
-  echo "Usage: $PROG <backup file (tar.gz)> <dbname>"
+  echo "Usage: $PROG <backup file (tar.gz)> <dbname> <pgcontainer>"
   echo "  backup file: database dump in tar gzip format"
   echo "  dbname: the name of the database to restore"
+  echo "  pgcontainer: the name of the postgres container holding the dbname"
   echo "Options:"
   echo "  -h, --help       Display this help message"
 }
@@ -32,14 +34,14 @@ if [ `lxc exec "$DB" -- systemctl is-active tomcat9` = "active" ]; then
 fi
 
 echo "Dropping database $DB..."
-sudo lxc exec postgres dropdb "$DB"
+sudo lxc exec $PG dropdb "$DB"
 
 echo "Recreating database..."
-sudo lxc exec postgres -- createdb -O "$DB" "$DB"
+sudo lxc exec $PG -- createdb -O "$DB" "$DB"
 
 echo "Restoring data to database..."
-zcat "${BACKUPFILE}" | grep -v 'ALTER .* OWNER' | sudo lxc exec postgres -- psql "$DB"
-echo "REASSIGN OWNED BY root TO $DB" | sudo lxc exec postgres -- psql "$DB"
+zcat "${BACKUPFILE}" | grep -v 'ALTER .* OWNER' | sudo lxc exec $PG -- psql "$DB"
+echo "REASSIGN OWNED BY root TO $DB" | sudo lxc exec $PG -- psql "$DB"
 
 if [ "$?" -eq 0 ]; then
   echo "Done!"
