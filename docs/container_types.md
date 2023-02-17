@@ -218,9 +218,9 @@ When `storage: s3`, additional keys can be specified. Please note that one of `c
 
 |   KEY     |  VALUES       |    DEFAULT      | MANDATORY | DESCRIPTION            |
 |-----------|---------------|-----------------|-----------|------------------------|
-| config    | String        | `N/A`           |   N       | Path to the directory on the host or S3 bucket name |
-| access_key| String        | `N/A`           |   N       | Backend system to use |
-| secret_key| String        | `N/A`           |   N       | Backend system to use |
-| provider  | String        | `aws`           |   N       | Backend system to use |
-| location  | String        | `eu-west-1`     |   N       | Backend system to use |
+| config    | String        | `N/A`           |   N       | Absolute path to an s3cfg file. When specified, `access_key`, `secret_key` and `location` will be ignored. |
+| access_key| String        | `N/A`           |   N       | The access key to access the S3 bucket. |
+| secret_key| String        | `N/A`           |   N       | The secret key to access the S3 bucket. |
+| provider  | [`aws`, `gcp`, `linode`, `digitalocean`, `contabo` ]        | `aws`           |   N       | The provider to use. |
+| location  | String        | `eu-west-1`     |   N       | The region where the S3 bucket resides. |
 
