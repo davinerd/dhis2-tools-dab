@@ -24,7 +24,7 @@ function log_error {
 }
 
 function save_creds {
-  local readonly creds=$1
+  local readonly creds=$(awk 'BEGIN {FS = OFS = "\""} /^[[:blank:]]*$/ {next} {for (i=1; i<=NF; i+=2) gsub(/[[:space:]]/,"",$i)} 1' <<< $1)
   local tmpfile="$(mktemp)" || exit 1
   local service=$(jq .service <<< $creds | tr -d '"')
 
