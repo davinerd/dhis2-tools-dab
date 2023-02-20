@@ -71,7 +71,7 @@ lxc exec $NAME -- rm -rf es_siem/
 ES_USER_PWD=""
 creds_str=""
 
-running_containers=$(lxc list -c n,s -f csv | grep -i running | cut -d ',' -f1)
+running_containers=$(lxc list -c n,s -f csv | grep -i running | grep -v $NAME | cut -d ',' -f1)
 for container in $running_containers; do
   containerz=$(echo $CONTAINERS | jq -r --arg cname "$container" '. | select(.name == $cname)')
 
@@ -83,8 +83,8 @@ for container in $running_containers; do
     container_type=""
   fi
 
-  # Skip configuration for logger and SIEM
-  if ! [[ "$container_type" =~ "siem" ]] && ! [[ "$container_type" =~ "logger" ]] || ! [ "$container_type" ]; then
+  # Skip configuration for logger to avoid duplicates
+  if ! [[ "$container_type" =~ "logger" ]]; then
     log_info "Configuring journal for '$container_name'"
     dhis2-set-journal $container_name $container_type
 
