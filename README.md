@@ -241,6 +241,8 @@ This software has been tested with a limited set of data and resources.
 Specifically, it was tested against the official DHIS2 databases, which lack several type of data like metadata.
 Also, audit data has been produced limited to basic processes like user management and authentication.
 
+DHIS2 versions tested include 2.38.x and 2.39.x. While we do expect this setup to work with 2.36.x and 2.37.x, testing is needed to ensure full compatibility.
+
 The system has been tested on laptops and workstations, using mostly virtualization and paravirtualization environments (i.e. VMWare and VirtualBox), with limited storage capacity.
 
 All SIEM rules must be thoroughly tested to ensure correctness.
